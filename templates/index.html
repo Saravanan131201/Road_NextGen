@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RoadNextGen — Smarter Roads. Safer Tomorrow.</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon/favicon-192x192.png') }}">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0f1e4a;--navy-d:#091230;
+  --blue:#1e40af;--blue-m:#2563eb;--blue-l:#3b82f6;
+  --teal:#0d9488;--teal-l:#14b8a6;
+  --surface:#ffffff;--surface-1:#f8fafc;--surface-2:#f1f5f9;
+  --border:#e2e8f0;--border-s:#cbd5e1;
+  --text:#0f172a;--muted:#64748b;--light:#94a3b8;
+  --grad:linear-gradient(135deg,#0f1e4a 0%,#1e3a8a 45%,#0369a1 100%);
+  --nav-h:90px;--tab-h:62px;
+}
+body{font-family:'Inter',sans-serif;background:#fff;color:var(--text);line-height:1.6;overflow-x:hidden}
+
+/* Smooth theme transition */
+body,
+.site-nav,
+#about,
+.about-card,
+.section-title,
+.section-desc,
+.about-card h4,
+.about-card p{
+  transition:
+    background-color .25s ease,
+    border-color .25s ease,
+    color .25s ease,
+    box-shadow .25s ease;
+}
+/* ══════════════ NAV ══════════════ */
+.site-nav{
+  position:fixed;top:0;left:0;right:0;z-index:999;height:var(--nav-h);
+  background:rgba(255,255,255,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 40px;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo-mark{width:38px;height:38px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.nav-logo-mark i{color:#fff;font-size:18px}
+.nav-brand{font-size:17px;font-weight:800;color:var(--navy);letter-spacing:-.3px}
+.nav-brand span{color:var(--teal-l)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-link{padding:7px 14px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;color:var(--muted);transition:all .18s;border:none;background:none;cursor:pointer;font-family:inherit}
+.nav-link:hover,.nav-link.active{color:var(--blue);background:rgba(30,64,175,.07)}
+.nav-cta{padding:8px 18px;background:var(--blue);color:#fff;border:none;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .18s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nav-cta:hover{background:var(--navy)}
+.nav-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
+.mob-menu{display:none;position:fixed;top:var(--nav-h);left:0;right:0;z-index:998;background:#fff;border-bottom:1px solid var(--border);padding:16px 20px;flex-direction:column;gap:4px}
+.mob-menu.open{display:flex}
+.mob-nav-link{padding:11px 14px;border-radius:9px;text-decoration:none;font-size:14.5px;font-weight:600;color:var(--muted);transition:all .18s;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left}
+.mob-nav-link:hover{color:var(--blue);background:rgba(30,64,175,.06)}
+
+/* ══════════════ DESKTOP HERO ══════════════ */
+.hero{min-height:100vh;padding-top:45px;background:var(--surface-1);display:flex;align-items:center}
+.hero-inner{max-width:1200px;margin:0 auto;padding:60px 40px;display:grid;grid-template-columns:1fr 460px;gap:64px;align-items:center}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(30,64,175,.08);border:1px solid rgba(30,64,175,.18);color:var(--blue);padding:6px 14px;border-radius:100px;font-size:12.5px;font-weight:600;margin-bottom:22px}
+.hero-badge i{font-size:13px}
+.hero-headline{font-size:clamp(32px,4vw,52px);font-weight:900;color:var(--navy);line-height:1.12;letter-spacing:-.03em;margin-bottom:18px}
+.hero-headline .hl-teal{color:var(--teal)}
+.hero-headline .hl-blue{color:var(--blue-m)}
+.hero-desc{font-size:16.5px;color:var(--muted);line-height:1.75;max-width:520px;margin-bottom:30px}
+.trust-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:36px}
+.trust-pill{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border-s);border-radius:100px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--navy)}
+.trust-pill i{font-size:13px;color:var(--teal)}
+.hero-stats{display:flex;gap:32px}
+.stat-item{display:flex;flex-direction:column}
+.stat-num{font-size:26px;font-weight:900;color:var(--navy);letter-spacing:-.02em}
+.stat-label{font-size:12px;color:var(--muted);font-weight:500}
+
+/* ══════════════ LOGIN CARD (desktop) ══════════════ */
+.login-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:0 4px 32px rgba(15,30,74,.08); }
+.form-heading{font-size:22px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.form-sub{font-size:13.5px;color:var(--muted);margin-bottom:20px}
+.role-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface-2);border-radius:12px;padding:4px;margin-bottom:22px}
+.role-tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 4px;border:none;background:none;border-radius:9px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .2s;line-height:1.2;text-align:center}
+.role-tab i{font-size:17px}
+.role-tab.active{background:#fff;color:var(--blue);box-shadow:0 1px 8px rgba(0,0,0,.09)}
+.panel{animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.role-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;font-size:11.5px;font-weight:700;margin-bottom:16px}
+.role-pill.citizen{background:rgba(13,148,136,.1);color:#0f766e}
+.role-pill.admin{background:rgba(30,64,175,.1);color:var(--blue)}
+.role-pill.crew{background:rgba(234,88,12,.08);color:#c2410c}
+.f-alert{display:flex;align-items:flex-start;gap:9px;padding:10px 13px;border-radius:9px;font-size:13px;margin-bottom:14px;line-height:1.5}
+.f-alert.error,.f-alert.danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.f-alert.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.f-alert.info{background:rgba(30,64,175,.06);border:1px solid rgba(30,64,175,.15);color:#1e3a8a}
+.f-alert i{font-size:14px;margin-top:1px;flex-shrink:0}
+.f-group{margin-bottom:14px}
+.f-label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:6px}
+.f-input{width:100%;padding:10px 13px;border:1.5px solid var(--border-s);border-radius:9px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border .18s;background:#fff}
+.f-input:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.btn-main{width:100%;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s}
+.btn-primary-solid{background:var(--blue);color:#fff}
+.btn-primary-solid:hover{background:var(--navy)}
+.mb-3{margin-bottom:12px}
+.mt-1{margin-top:4px}
+.divider{text-align:center;font-size:12px;color:var(--light);position:relative;margin:14px 0}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:44%;height:1px;background:var(--border)}
+.divider::before{left:0}.divider::after{right:0}
+.btn-google{width:100%;padding:10px;border:1.5px solid var(--border-s);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;font-size:13.5px;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;transition:all .18s;margin-bottom:8px;text-decoration:none}
+.btn-google:hover{background:var(--surface-2)}
+.login-footer{font-size:11.5px;color:var(--light);text-align:center;margin-top:12px;line-height:1.7}
+.pw-wrap{position:relative}
+.pw-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;padding:0}
+.otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+.otp-box{width:42px;height:48px;text-align:center;border:1.5px solid var(--border-s);border-radius:9px;font-size:20px;font-weight:700;color:var(--navy);outline:none;font-family:inherit;transition:border .18s}
+.otp-box:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.timer-row{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.timer-val{font-weight:700;color:var(--blue)}
+.btn-sm-link{background:none;border:none;color:var(--blue);font-size:12.5px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;padding:0;font-weight:600}
+.btn-sm-link:disabled{color:var(--light);cursor:default}
+
+/* ══════════════ DESKTOP SECTIONS ══════════════ */
+section{padding:90px 40px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.2);color:var(--teal);padding:5px 14px;border-radius:100px;font-size:12px;font-weight:700;margin-bottom:16px;letter-spacing:.3px}
+.section-title{font-size:clamp(26px,3vw,40px);font-weight:900;color:var(--navy);line-height:1.18;letter-spacing:-.025em;margin-bottom:14px}
+.section-desc{font-size:16px;color:var(--muted);max-width:580px;line-height:1.75}
+#about{background:#fff}
+.about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:52px}
+.about-card{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:28px;transition:all .25s}
+.about-card:hover{border-color:rgba(30,64,175,.3);box-shadow:0 6px 28px rgba(30,64,175,.1);transform:translateY(-3px)}
+.about-icon{width:46px;height:46px;background:var(--grad);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.about-icon i{color:#fff;font-size:20px}
+.about-card h4{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.about-card p{font-size:13.5px;color:var(--muted);line-height:1.7}
+#how-section{background:var(--grad);padding:90px 40px}
+#how-section .section-eyebrow{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.85)}
+#how-section .section-title{color:#fff}
+#how-section .section-desc{color:rgba(255,255,255,.65)}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:52px}
+.step-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:24px;transition:all .25s}
+.step-card:hover{background:rgba(255,255,255,.13);transform:translateY(-3px)}
+.step-num{width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;margin-bottom:16px}
+.step-card h4{font-size:15px;font-weight:700;color:#fff;margin-bottom:8px}
+.step-card p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.65}
+.step-card .step-icon{font-size:20px;color:var(--teal-l);margin-bottom:10px;display:block}
+#contact-section{background:var(--surface-1)}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:52px;align-items:start}
+.contact-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:32px;text-align:center}
+.contact-card .avatar{width:72px;height:72px;background:var(--grad);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px}
+.contact-card h3{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.contact-card p{font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:20px}
+.contact-links{display:flex;flex-direction:column;gap:10px}
+.contact-link{display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 20px;border-radius:10px;text-decoration:none;font-size:13.5px;font-weight:600;transition:all .2s}
+.contact-link.github{background:#1a1a1a;color:#fff}.contact-link.github:hover{background:#333}
+.contact-link.linkedin{background:#0077b5;color:#fff}.contact-link.linkedin:hover{background:#005885}
+.contact-link.source{background:var(--surface-2);color:var(--navy);border:1px solid var(--border)}.contact-link.source:hover{background:var(--border)}
+.tech-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;justify-content:center}
+.tech-pill{background:rgba(30,64,175,.08);color:var(--blue);border:1px solid rgba(30,64,175,.15);border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600}
+.contact-info{display:flex;flex-direction:column;gap:20px}
+.info-item{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px}
+.info-item-icon{width:42px;height:42px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.info-item-icon i{color:#fff;font-size:18px}
+.info-item h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.info-item p{font-size:13px;color:var(--muted);line-height:1.6}
+footer{background:var(--navy);padding:32px 40px;text-align:center}
+footer p{color:rgba(255,255,255,.45);font-size:13px}
+footer span{color:var(--teal-l)}
+
+
+/* ══════════════ THEME TOGGLE ══════════════ */
+.home-theme-toggle{
+  width:36px;
+  height:36px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:transparent;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  font-size:16px;
+  transition:all .2s ease;
+  flex-shrink:0;
+}
+
+.home-theme-toggle:hover{
+  background:var(--surface-2);
+  color:var(--text);
+}
+
+/* Dark mode */
+[data-theme="dark"]{
+  --surface:#080f1a;
+  --surface-1:#0f1927;
+  --surface-2:#111e2e;
+  --border:#1e3048;
+  --border-s:#29415d;
+  --text:#f0f6ff;
+  --muted:#7fa8c9;
+  --light:#4a7a9b;
+
+  --navy:#f0f6ff;
+  --navy-d:#dbeafe;
+  --blue:#3b82f6;
+  --blue-m:#60a5fa;
+  --blue-l:#93c5fd;
+
+  --teal:#14b8a6;
+  --teal-l:#2dd4bf;
+
+  --grad:linear-gradient(135deg,#0b1633 0%,#10275c 45%,#075985 100%);
+}
+
+[data-theme="dark"] body{
+  background:var(--surface);
+  color:var(--text);
+}
+
+[data-theme="dark"] .site-nav{
+  background:rgba(15,25,39,.95);
+  border-color:var(--border);
+}
+
+[data-theme="dark"] .mob-tab-bar{
+  background:var(--surface-1);
+  border-color:var(--border);
+}
+
+[data-theme="dark"] .login-card,
+[data-theme="dark"] .about-card,
+[data-theme="dark"] .contact-card,
+[data-theme="dark"] .info-item{
+  background:var(--surface-1);
+  border-color:var(--border);
+}
+
+[data-theme="dark"] .trust-pill,
+[data-theme="dark"] .btn-google,
+[data-theme="dark"] .mob-about-card,
+[data-theme="dark"] .mob-contact-card,
+[data-theme="dark"] .mob-info-item{
+  background:var(--surface-2);
+  border-color:var(--border);
+  color:var(--text);
+}
+
+[data-theme="dark"] .f-input{
+  background:var(--surface-2);
+  border-color:var(--border-s);
+  color:var(--text);
+}
+
+[data-theme="dark"] .role-tabs,
+[data-theme="dark"] .mob-role-tabs{
+  background:var(--surface-2);
+  border-color:var(--border);
+}
+
+[data-theme="dark"] .role-tab.active,
+[data-theme="dark"] .mob-role-tab.active{
+  background:var(--surface-1);
+}
+
+[data-theme="dark"] footer{
+  background:#060c18;
+}
+
+[data-theme="dark"] .nav-brand,
+[data-theme="dark"] .form-heading,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .hero-headline,
+[data-theme="dark"] .f-label,
+[data-theme="dark"] .stat-num,
+[data-theme="dark"] .about-card h4,
+[data-theme="dark"] .contact-card h3,
+[data-theme="dark"] .info-item h4,
+[data-theme="dark"] .mob-about-card h4,
+[data-theme="dark"] .mob-contact-card h3,
+[data-theme="dark"] .mob-info-item h4{
+  color:var(--navy);
+}
+
+[data-theme="dark"] .btn-google{
+  color:var(--text);
+}
+
+[data-theme="dark"] .site-nav .rv-sidebar-logo img{
+  filter:invert(1) hue-rotate(180deg) brightness(.9);
+}
+
+[data-theme="dark"] #about{
+  background:var(--surface);
+}
+
+[data-theme="dark"] #about .section-eyebrow{
+  background:rgba(20,184,166,.10);
+  border-color:rgba(20,184,166,.22);
+  color:var(--teal-l);
+}
+
+[data-theme="dark"] #about .section-title{
+  color:var(--text);
+}
+
+[data-theme="dark"] #about .section-desc{
+  color:var(--muted);
+}
+
+[data-theme="dark"] #about .about-card{
+  background:var(--surface-1);
+  border-color:var(--border);
+  box-shadow:0 4px 20px rgba(0,0,0,.12);
+}
+
+[data-theme="dark"] #about .about-card:hover{
+  background:var(--surface-2);
+  border-color:rgba(59,130,246,.45);
+  box-shadow:0 8px 28px rgba(0,0,0,.22);
+}
+
+[data-theme="dark"] #about .about-card h4{
+  color:var(--text);
+}
+
+[data-theme="dark"] #about .about-card p{
+  color:var(--muted);
+}
+
+/* ══════════════ TERMS MODAL ══════════════ */
+#terms-modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(4px);
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}
+#terms-modal.open{
+  display:flex;
+}
+.terms-modal-inner{
+  background:#fff;
+  border-radius:20px;
+  padding:32px 28px 24px;
+  max-width:420px;
+  width:100%;
+  box-shadow:0 12px 48px rgba(0,0,0,.18);
+  animation:fadeIn .22s ease;
+}
+[data-theme="dark"] .terms-modal-inner{
+  background:var(--surface-1);
+  border:1px solid var(--border);
+}
+#terms-modal h2{
+  font-size:20px;
+  font-weight:800;
+  color:var(--navy);
+  margin-bottom:6px;
+}
+.terms-sub{
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:20px;
+  line-height:1.6;
+}
+.terms-perm-item{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:12px 0;
+  border-top:1px solid var(--border);
+}
+.terms-perm-item:last-of-type{
+  border-bottom:1px solid var(--border);
+  margin-bottom:14px;
+}
+.terms-perm-item .icon{
+  font-size:22px;
+  line-height:1;
+  flex-shrink:0;
+  margin-top:2px;
+}
+.perm-title{
+  font-size:14px;
+  font-weight:700;
+  color:var(--navy);
+  margin-bottom:2px;
+}
+.perm-sub{
+  font-size:12.5px;
+  color:var(--muted);
+}
+.terms-note{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.7;
+  margin-bottom:20px;
+  margin-top:14px;
+}
+.terms-note a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:600;
+}
+.terms-note a:hover{
+  text-decoration:underline;
+}
+.terms-btn-row{
+  display:flex;
+  gap:10px;
+}
+.terms-cancel{
+  flex:1;
+  padding:11px;
+  border:1.5px solid var(--border-s);
+  border-radius:10px;
+  background:transparent;
+  font-size:14px;
+  font-weight:600;
+  color:var(--muted);
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .18s;
+}
+.terms-cancel:hover{
+  background:var(--surface-2);
+  color:var(--text);
+}
+.terms-agree{
+  flex:2;
+  padding:11px;
+  border:none;
+  border-radius:10px;
+  background:var(--blue);
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:center;
+  text-decoration:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .18s;
+}
+.terms-agree:hover{
+  background:var(--navy);
+}
+@media(max-width:768px){
+  .terms-modal-inner{
+    padding:24px 18px 18px;
+    border-radius:16px;
+  }
+  #terms-modal h2{
+    font-size:18px;
+  }
+}
+
+
+/* ══════════════ MOBILE — BOTTOM TAB BAR ══════════════ */
+.mob-tab-bar{
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:65px;
+  z-index:900;
+  background:#fff;
+  border-top:1px solid var(--border);
+  padding:2px 0 3px;
+  box-sizing:border-box;
+}
+.mob-tabs{
+  height:100%;
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+}
+.mob-tab{
+  flex:1;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:2px 2px;
+  font-size:8.5px;
+  font-weight:700;
+  color:var(--muted);
+  border:none;
+  background:none;
+  cursor:pointer;
+  font-family:inherit;
+  gap:1px;
+  border-radius:8px;
+  transition:all .18s;
+  line-height:1.1;
+}
+.mob-tab i{
+  font-size:16px;
+  line-height:1;
+}
+
+.mob-tab.active{
+  color:var(--blue);
+}
+.mob-pane{
+  display:none;
+}
+.mob-pane.active{
+  display:block;
+}
+
+/* Mobile role sub-tabs */
+.mob-role-tabs{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  background:var(--surface-2);
+  border-radius:10px;
+  padding:3px;
+  margin-bottom:16px;
+  border:1px solid var(--border);
+  gap:2px;
+}
+.mob-role-tab{
+  padding:8px 4px;
+  text-align:center;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+  transition:all .2s;
+  border:none;
+  background:none;
+  font-family:inherit;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  line-height:1.2;
+}
+.mob-role-tab i{
+  font-size:16px;
+}
+.mob-role-tab.active{
+  background:#fff;
+  color:var(--blue);
+  box-shadow:0 1px 6px rgba(0,0,0,.10);
+}
+
+/* Mobile pane container & padding */
+.mob-pane-container{
+  display:none;
+}
+
+.mob-content-pad{
+  padding:16px 16px;
+  padding-bottom:58px;
+}
+
+/* Mobile How It Works gradient */
+.mob-hiw-bg{
+  background:var(--grad);
+  min-height:calc(100vh - var(--nav-h));
+}
+
+.mob-hiw-bg .section-eyebrow{
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.2);
+  color:rgba(255,255,255,.85);
+}
+
+/* Mobile about card */
+.mob-about-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:flex-start;gap:14px;transition:all .2s}
+.mob-about-card:hover{border-color:rgba(30,64,175,.3)}
+.mob-about-icon{width:40px;height:40px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mob-about-icon i{color:#fff;font-size:18px}
+.mob-about-card h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.mob-about-card p{font-size:12.5px;color:var(--muted);line-height:1.65}
+
+/* Mobile step card */
+.mob-step-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;display:flex;align-items:flex-start;gap:14px}
+.mob-step-num{width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
+.mob-step-card h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.mob-step-card p{font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.6}
+
+/* Mobile contact */
+.mob-contact-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;margin-bottom:16px}
+.mob-contact-card .avatar{width:60px;height:60px;background:var(--grad);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px}
+.mob-contact-card h3{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.mob-contact-card p{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px}
+.mob-info-item{display:flex;align-items:flex-start;gap:12px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px}
+.mob-info-icon{width:36px;height:36px;background:var(--grad);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mob-info-icon i{color:#fff;font-size:16px}
+.mob-info-item h4{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.mob-info-item p{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* ══════════════ RESPONSIVE BREAKPOINTS ══════════════ */
+/* ══════════════ MOBILE FIXED NAVBAR + BOTTOM TAB BAR ══════════════ */
+@media(max-width:768px){
+
+  /* Hide desktop content */
+  .desktop-content{
+    display:none;
+  }
+
+  /* ───── FIXED TOP NAVBAR ───── */
+  .site-nav{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    width:100%;
+    height:var(--nav-h);
+    z-index:9999;
+
+    padding:0 16px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    /* Prevent navbar from moving/scrolling */
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+  }
+
+  /* Keep only logo + theme toggle on mobile */
+  .nav-links,
+  .nav-cta,
+  .nav-hamburger{
+    display:none !important;
+  }
+
+  .home-theme-toggle{
+    display:flex !important;
+    flex-shrink:0;
+  }
+
+  /* ───── MOBILE CONTENT ───── */
+  .mob-pane-container{
+    display:block;
+
+    /* Space below fixed navbar */
+    padding-top:var(--nav-h);
+
+    /* Space above fixed bottom tabs */
+    padding-bottom:var(--tab-h);
+
+    min-height:100vh;
+
+    position:relative;
+  }
+
+  /* ───── FIXED BOTTOM TAB BAR ───── */
+  .mob-tab-bar{
+    display:block;
+
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+
+    width:100%;
+    height:var(--tab-h);
+
+    z-index:9999;
+
+    background:var(--surface);
+    border-top:1px solid var(--border);
+
+    padding:2px 0 3px;
+
+    box-sizing:border-box;
+
+    /* Keep it fixed while scrolling */
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+
+    /* iPhone safe-area support */
+    padding-bottom:calc(3px + env(safe-area-inset-bottom));
+    height:calc(var(--tab-h) + env(safe-area-inset-bottom));
+  }
+
+  .mob-tabs{
+    width:100%;
+    height:100%;
+
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+  }
+
+  .mob-tab{
+    flex:1;
+    height:100%;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    padding:2px;
+
+    font-size:8.5px;
+    font-weight:700;
+    line-height:1.1;
+
+    color:var(--muted);
+
+    border:none;
+    background:none;
+
+    cursor:pointer;
+    font-family:inherit;
+
+    gap:2px;
+    border-radius:8px;
+
+    transition:all .18s;
+  }
+
+  .mob-tab i{
+    font-size:16px;
+    line-height:1;
+  }
+
+  .mob-tab.active{
+    color:var(--blue);
+  }
+
+  /* Prevent the last content from being hidden behind
+     the fixed bottom navigation */
+  .mob-content-pad{
+    padding:16px;
+    padding-bottom:calc(24px + var(--tab-h) + env(safe-area-inset-bottom));
+  }
+
+  /* Keep mobile panes below the fixed navbar */
+  .mob-pane{
+    min-height:calc(100vh - var(--nav-h));
+  }
+
+  /* How It Works */
+  .mob-hiw-bg{
+    min-height:calc(100vh - var(--nav-h));
+  }
+}
+
+@media(min-width:769px){
+  .mob-pane-container{display:none}
+  .nav-cta{display:none !important;}
+  .home-theme-toggle{display:flex;}
+}
+@media(max-width:900px) and (min-width:769px){
+  .hero-inner{grid-template-columns:1fr;padding:40px 20px 60px;gap:40px}
+  .about-grid{grid-template-columns:1fr 1fr}
+  .steps-grid{grid-template-columns:1fr 1fr}
+  .contact-grid{grid-template-columns:1fr}
+  section{padding:60px 20px}
+  #how-section{padding:60px 20px}
+}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ NAVBAR ══════════════ -->
+<nav class="site-nav">
+
+  <a class="rv-sidebar-logo" href="/">
+    <img 
+      src="{{ url_for('static', filename='images/Road_NextGen_Logo_Final.png') }}" 
+      alt="Road NextGen Logo"
+      style="height:75px;width:auto;min-width:40px;object-fit:contain;"
+    />
+  </a>
+
+  <div class="nav-links">
+    <a class="nav-link active" href="#home">Home</a>
+    <a class="nav-link" href="#about">About</a>
+    <a class="nav-link" href="#how-section">How It Works</a>
+    <a class="nav-link" href="#contact-section">Contact</a>
+  </div>
+
+  <!-- Same theme control behavior as base.html -->
+  <button
+    class="home-theme-toggle"
+    id="themeToggle"
+    onclick="toggleTheme()"
+    title="Toggle theme"
+    aria-label="Toggle theme"
+  >
+    <i class="bi bi-moon-stars" id="themeIcon"></i>
+  </button>
+
+</nav>
+
+<!-- ══════════════ DESKTOP CONTENT ══════════════ -->
+<div class="desktop-content">
+
+  <!-- HERO -->
+  <section id="home" class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-badge"><i class="bi bi-stars"></i>AI-Powered Road Intelligence</div>
+        <h1 class="hero-headline">Smarter Roads.<br><span class="hl-teal">Safer</span> <span class="hl-blue">Tomorrow.</span></h1>
+        <p class="hero-desc">RoadNextGen bridges citizens and municipality crews with AI-powered damage detection, live hazard mapping, and end-to-end repair lifecycle management.</p>
+        <div class="trust-row">
+          <div class="trust-pill"><i class="bi bi-shield-check-fill"></i>Secure OTP Login</div>
+          <div class="trust-pill"><i class="bi bi-google"></i>Google OAuth</div>
+          <div class="trust-pill"><i class="bi bi-cpu-fill"></i>YOLOv11 AI</div>
+          <div class="trust-pill"><i class="bi bi-geo-alt-fill"></i>Live Hazard Map</div>
+        
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item"><span class="stat-num">94%+</span><span class="stat-label">Detection accuracy</span></div>
+          <div class="stat-item"><span class="stat-num">3 Roles</span><span class="stat-label">Citizen · Admin · Crew</span></div>
+          <div class="stat-item"><span class="stat-num">Real-time</span><span class="stat-label">Repair tracking</span></div>
+        </div>
+      </div>
+
+      <!-- LOGIN CARD -->
+      <div class="login-card" id="loginCard">
+
+        {% if user %}
+        {# ── SIGNED-IN STATE ── #}
+        <div id="signed-in-panel">
+
+          {# Role config #}
+          {% set role_icon = {
+            'citizen': 'bi-person-walking',
+            'admin':   'bi-building',
+            'crew':    'bi-cone-striped'
+          }.get(user.role, 'bi-person') %}
+
+          {% set role_label = {
+            'citizen': 'Citizen',
+            'admin':   'Municipality Admin',
+            'crew':    'Maintenance Crew'
+          }.get(user.role, user.role|capitalize) %}
+
+          {% set role_pill_class = {
+            'citizen': 'citizen',
+            'admin':   'admin',
+            'crew':    'crew'
+          }.get(user.role, 'citizen') %}
+
+          {% set dashboard_url = {
+            'citizen': url_for('citizen.dashboard'),
+            'admin':   url_for('admin.dashboard'),
+            'crew':    url_for('crew.dashboard')
+          }.get(user.role, '/') %}
+
+          {# Avatar #}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:var(--surface-1);border:1px solid var(--border);border-radius:14px;">
+            {% if user.avatar %}
+              <img src="{{ user.avatar }}" alt="avatar"
+                  style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border-s);flex-shrink:0;"/>
+            {% else %}
+              <div style="width:52px;height:52px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="bi {{ role_icon }}" style="color:#fff;font-size:22px;"></i>
+              </div>
+            {% endif %}
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                {{ user.name or 'Welcome back' }}
+              </div>
+              <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                {{ user.email }}
+              </div>
+            </div>
+          </div>
+
+          {# Role badge #}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div class="role-pill {{ role_pill_class }}" style="margin-bottom:0;">
+              <i class="bi {{ role_icon }}"></i>{{ role_label }}
+            </div>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#16a34a;">
+              <i class="bi bi-circle-fill" style="font-size:8px;"></i>Active session
+            </span>
+          </div>
+
+          {# Dashboard CTA #}
+          <a href="{{ dashboard_url }}"
+            class="btn-main btn-primary-solid"
+            style="text-decoration:none;margin-bottom:12px;display:flex;">
+            <i class="bi bi-speedometer2"></i>Go to Dashboard
+          </a>
+
+          {# Quick action tiles #}
+          {% if user.role == 'citizen' %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+            <a href="{{ url_for('citizen.report') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-camera2" style="font-size:20px;color:var(--blue);"></i>Report Damage
+            </a>
+            <a href="{{ url_for('citizen.my_reports') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-list-check" style="font-size:20px;color:var(--teal);"></i>My Reports
+            </a>
+          </div>
+          {% elif user.role == 'admin' %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+            <a href="{{ url_for('admin.reports') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-clipboard-data" style="font-size:20px;color:var(--blue);"></i>All Reports
+            </a>
+            <a href="{{ url_for('admin.workers') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-people-fill" style="font-size:20px;color:var(--teal);"></i>Manage Crew
+            </a>
+          </div>
+          {% elif user.role == 'crew' %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+            <a href="{{ url_for('crew.workers') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-people" style="font-size:20px;color:var(--blue);"></i>My Workers
+            </a>
+            <a href="{{ url_for('crew.history') }}"
+              style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
+              onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
+              <i class="bi bi-clock-history" style="font-size:20px;color:var(--teal);"></i>History
+            </a>
+          </div>
+          {% endif %}
+
+          {# Sign out #}
+          <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;color:var(--muted);">Not you?</span>
+            <a href="{{ url_for('auth.logout') }}"
+              style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#dc2626;text-decoration:none;padding:6px 12px;border-radius:8px;border:1px solid #fecaca;background:#fef2f2;transition:all .18s;"
+              onmouseover="this.style.background='#fee2e2'"
+              onmouseout="this.style.background='#fef2f2'">
+              <i class="bi bi-box-arrow-right"></i>Sign Out
+            </a>
+          </div>
+        </div>
+
+        {% else %}
+        {# ── SIGNED-OUT STATE (original form) ── #}
+        <h2 class="form-heading">Sign In</h2>
+        <p class="form-sub">Select your role to continue</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for cat,msg in messages %}
+        <div class="f-alert {{ 'error' if cat in ['danger','error'] else cat }}">
+          <i class="bi bi-{{ 'exclamation-circle' if cat in ['danger','error','warning'] else 'check-circle' }}"></i>
+          <span>{{ msg }}</span>
+        </div>
+        {% endfor %}{% endif %}
+        {% endwith %}
+
+        {% if error is defined and error %}
+        <div class="f-alert error"><i class="bi bi-exclamation-circle"></i><span>{{ error }}</span></div>
+        {% endif %}
+
+        <div class="role-tabs">
+          <button class="role-tab {% if active_tab=='citizen' or not active_tab %}active{% endif %}" onclick="switchRole('citizen')" id="tab-citizen">
+            <i class="bi bi-person-walking"></i>Citizen
+          </button>
+          <button class="role-tab {% if active_tab=='admin' %}active{% endif %}" onclick="switchRole('admin')" id="tab-admin">
+            <i class="bi bi-building"></i>Municipality<br>Admin
+          </button>
+          <button class="role-tab {% if active_tab=='crew' %}active{% endif %}" onclick="switchRole('crew')" id="tab-crew">
+            <i class="bi bi-cone-striped"></i>Maintenance<br>Crew
+          </button>
+        </div>
+
+        <!-- CITIZEN -->
+        <div id="panel-citizen" class="panel {% if active_tab=='admin' or active_tab=='crew' %}hidden{% endif %}">
+          <div class="role-pill citizen"><i class="bi bi-person-walking"></i>Citizen Portal</div>
+          <div id="step-email" {% if request.args.get('step')=='otp' %}style="display:none"{% endif %}>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Enter your Gmail to receive a one-time code.<br><span style="font-size:11.5px;color:var(--light)">Session lasts <strong>1 day</strong>.</span></p>
+            <form method="POST" action="{{ url_for('auth.citizen_send_otp') }}">
+              {% if request.args.get('show_name')=='1' %}
+              <div class="f-group">
+                <label class="f-label">Your Name</label>
+                <input type="text" name="name" class="f-input" placeholder="E.g. Arjun Kumar" required value="{{ request.args.get('prefill_name','') }}" autocomplete="name"/>
+              </div>
+              {% endif %}
+              <div class="f-group">
+                <label class="f-label">Gmail Address</label>
+                <input type="email" name="email" class="f-input" placeholder="you@gmail.com" required autocomplete="email" value="{{ request.args.get('prefill_email','') }}"/>
+              </div>
+              <button type="submit" class="btn-main btn-primary-solid mb-3"><i class="bi bi-envelope-at"></i>Send OTP Code</button>
+            </form>
+            <div class="divider">or</div>
+            <button type="button" class="btn-google" onclick="openTermsModal()">
+              <svg width="17" height="17" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Continue with Google <span style="font-size:11px;color:var(--muted);margin-left:4px">(30-day session)</span>
+            </button>
+            <p class="login-footer">Only <strong>@gmail.com</strong> accounts accepted.</p>
+          </div>
+          <div id="step-otp" {% if request.args.get('step')!='otp' %}style="display:none"{% endif %}>
+            <div class="f-alert info" style="margin-bottom:16px"><i class="bi bi-envelope-check"></i><span>Code sent to <strong>{{ request.args.get('otp_email','your email') }}</strong>. Check inbox and spam.</span></div>
+            <form method="POST" action="{{ url_for('auth.citizen_verify_otp') }}">
+              <input type="hidden" name="otp_email" value="{{ request.args.get('otp_email','') }}"/>
+              <label class="f-label" style="text-align:center;display:block;margin-bottom:10px">Enter 6-digit code</label>
+              <div class="otp-row" id="otpBoxes">
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code"/>
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+                <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              </div>
+              <input type="hidden" name="otp" id="otpHidden"/>
+              <div class="timer-row">Code expires in <span class="timer-val" id="otpTimer">10:00</span></div>
+              <button type="submit" class="btn-main btn-primary-solid mb-3" onclick="assembleOtp()"><i class="bi bi-shield-check"></i>Verify &amp; Sign In</button>
+            </form>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+              <form method="POST" action="{{ url_for('auth.citizen_resend_otp') }}" style="margin:0">
+                <input type="hidden" name="otp_email" value="{{ request.args.get('otp_email','') }}"/>
+                <button type="submit" class="btn-sm-link" id="resendBtn" disabled><i class="bi bi-arrow-clockwise"></i>Resend code</button>
+              </form>
+              <a href="{{ url_for('auth.login', tab='citizen') }}" class="btn-sm-link"><i class="bi bi-arrow-left"></i>Different email</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div id="panel-admin" class="panel {% if active_tab!='admin' %}hidden{% endif %}">
+          <div class="role-pill admin"><i class="bi bi-building"></i>Municipality Admin Portal</div>
+          <div class="f-alert info" style="margin-bottom:16px"><i class="bi bi-info-circle"></i><span>Admin accounts are provisioned by the system administrator.</span></div>
+          <form method="POST" action="{{ url_for('auth.staff_login') }}">
+            <input type="hidden" name="role" value="admin"/>
+            <div class="f-group">
+              <label class="f-label">Admin Email Address</label>
+              <input type="email" name="email" class="f-input" placeholder="admin@municipality.gov" required autocomplete="username" value="{{ request.form.get('email','') if request.form.get('role')=='admin' else '' }}"/>
+            </div>
+            <div class="f-group">
+              <label class="f-label">Password</label>
+              <div class="pw-wrap">
+                <input type="password" name="password" id="adminPw" class="f-input" placeholder="Enter your password" required autocomplete="current-password"/>
+                <button type="button" class="pw-eye" onclick="togglePw('adminPw','adminEye')" tabindex="-1"><i class="bi bi-eye" id="adminEye"></i></button>
+              </div>
+            </div>
+            <button type="submit" class="btn-main btn-primary-solid"><i class="bi bi-building"></i>Sign In as Admin</button>
+          </form>
+          <p class="login-footer">Authorised municipality personnel only.<br>Unauthorised access attempts are logged.</p>
+        </div>
+
+        <!-- CREW -->
+        <div id="panel-crew" class="panel {% if active_tab!='crew' %}hidden{% endif %}">
+          <div class="role-pill crew"><i class="bi bi-cone-striped"></i>Maintenance Crew Portal</div>
+          <div class="f-alert info" style="margin-bottom:16px"><i class="bi bi-info-circle"></i><span>Crew credentials are issued by your municipality administrator.</span></div>
+          <form method="POST" action="{{ url_for('auth.staff_login') }}">
+            <input type="hidden" name="role" value="crew"/>
+            <div class="f-group">
+              <label class="f-label">Work Email Address</label>
+              <input type="email" name="email" class="f-input" placeholder="crew@municipality.gov" required autocomplete="username" value="{{ request.form.get('email','') if request.form.get('role')=='crew' else '' }}"/>
+            </div>
+            <div class="f-group">
+              <label class="f-label">Password</label>
+              <div class="pw-wrap">
+                <input type="password" name="password" id="crewPw" class="f-input" placeholder="Enter your password" required autocomplete="current-password"/>
+                <button type="button" class="pw-eye" onclick="togglePw('crewPw','crewEye')" tabindex="-1"><i class="bi bi-eye" id="crewEye"></i></button>
+              </div>
+            </div>
+            <button type="submit" class="btn-main btn-primary-solid"><i class="bi bi-cone-striped"></i>Sign In as Team Head</button>
+          </form>
+          <p class="login-footer">Contact your municipality admin to reset credentials.</p>
+        </div>
+
+        {% endif %}{# end user check #}
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="section-inner">
+      <div class="section-eyebrow"><i class="bi bi-info-circle-fill"></i>About RoadNextGen</div>
+      <h2 class="section-title">Turning citizen reports into<br>faster, smarter repairs</h2>
+      <p class="section-desc">A civic-tech platform connecting citizens, municipality administrators, and road crews — powered by AI to keep roads safe.</p>
+      <div class="about-grid">
+        <div class="about-card"><div class="about-icon"><i class="bi bi-camera-video-fill"></i></div><h4>AI Detection Engine</h4><p>YOLOv11-powered model classifies potholes, cracks, and waterlogging from citizen photos with 94%+ accuracy in real time.</p></div>
+        <div class="about-card"><div class="about-icon"><i class="bi bi-map-fill"></i></div><h4>Live Hazard Map</h4><p>Every report is pinned on a live interactive Leaflet map, giving full visibility into nearby hazards and active repair zones.</p></div>
+        <div class="about-card"><div class="about-icon"><i class="bi bi-arrow-repeat"></i></div><h4>Full Repair Lifecycle</h4><p>From citizen report to crew assignment to marked-complete — every stakeholder stays informed at each stage automatically.</p></div>
+        <div class="about-card"><div class="about-icon"><i class="bi bi-person-check-fill"></i></div><h4>Multi-Role Access</h4><p>Separate portals for citizens (OTP/Google), municipality admins, and maintenance crew heads with role-based dashboards.</p></div>
+        <div class="about-card"><div class="about-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div><h4>Cloudinary Uploads</h4><p>Repair photos uploaded securely via Cloudinary — before and after images build accountability and verify completion.</p></div>
+        <div class="about-card"><div class="about-icon"><i class="bi bi-bell-fill"></i></div><h4>Smart Notifications</h4><p>Citizens receive email updates when their report is accepted, assigned to crew, and resolved.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-section">
+    <div class="section-inner">
+      <div class="section-eyebrow"><i class="bi bi-gear-fill"></i>How It Works</div>
+      <h2 class="section-title">Hazard to fix in 4 steps</h2>
+      <p class="section-desc">RoadNextGen turns citizen observations into actionable repair tasks — fast, transparent, and fully tracked.</p>
+      <div class="steps-grid">
+        <div class="step-card"><div class="step-num">01</div><i class="bi bi-camera2 step-icon"></i><h4>Citizen Reports</h4><p>Citizen submits a photo. AI instantly classifies damage type, severity, and location — pinned on the live map.</p></div>
+        <div class="step-card"><div class="step-num">02</div><i class="bi bi-building-check step-icon"></i><h4>Admin Reviews</h4><p>Municipality admin verifies the report, sets priority, and assigns a maintenance crew to the repair task.</p></div>
+        <div class="step-card"><div class="step-num">03</div><i class="bi bi-person-gear step-icon"></i><h4>Crew Dispatched</h4><p>Crew navigates to the site using integrated maps, logs repair progress, and uploads before/after photos.</p></div>
+        <div class="step-card"><div class="step-num">04</div><i class="bi bi-patch-check-fill step-icon"></i><h4>Resolved &amp; Verified</h4><p>Citizen notified via email. Hazard automatically removed from the live map. Repair record archived.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact-section">
+    <div class="section-inner">
+      <div class="section-eyebrow"><i class="bi bi-person-lines-fill"></i>Contact &amp; Connect</div>
+      <h2 class="section-title">Built with passion</h2>
+      <p class="section-desc">RoadNextGen is a full-stack civic-tech project — reach out to connect or contribute.</p>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="avatar">👨‍💻</div>
+          <h3>Saravanan S</h3>
+          <p>Full-stack AI engineer passionate about multi-agent systems, LLM applications, and tools that make civic life easier.</p>
+          <div class="contact-links">
+            <a href="https://github.com/Saravanan131201" target="_blank" class="contact-link github"><i class="bi bi-github"></i>GitHub</a>
+            <a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank" class="contact-link linkedin"><i class="bi bi-linkedin"></i>LinkedIn</a>
+            <a href="https://github.com/Saravanan131201/Tripswarm-using-Langgraph" target="_blank" class="contact-link source"><i class="bi bi-code-square"></i>Source Code</a>
+          </div>
+          <div class="tech-pills">
+            <span class="tech-pill">Python</span><span class="tech-pill">Flask</span><span class="tech-pill">YOLOv11</span><span class="tech-pill">MongoDB</span><span class="tech-pill">Bootstrap 5</span><span class="tech-pill">Google OAuth</span><span class="tech-pill">Cloudinary</span><span class="tech-pill">Leaflet</span>
+          </div>
+        </div>
+        <div class="contact-info">
+          <div class="info-item"><div class="info-item-icon"><i class="bi bi-envelope-fill"></i></div><div><h4>Get In Touch</h4><p>Interested in contributing, deploying, or learning more about RoadNextGen? Reach out via LinkedIn or GitHub.</p></div></div>
+          <div class="info-item"><div class="info-item-icon"><i class="bi bi-shield-lock-fill"></i></div><div><h4>Privacy First</h4><p>We only store your Gmail address, name, and avatar. Your data is never sold or shared with third parties.</p></div></div>
+          <div class="info-item"><div class="info-item-icon"><i class="bi bi-globe2"></i></div><div><h4>Open for Deployment</h4><p>RoadNextGen can be deployed for any municipality or civic body. The platform is designed to scale to city-wide use.</p></div></div>
+          <div class="info-item"><div class="info-item-icon"><i class="bi bi-code-slash"></i></div><div><h4>Tech Stack</h4><p>Flask · MongoDB · YOLOv11 · Cloudinary · Leaflet · Bootstrap 5 · Google OAuth · Flask-Mail · bcrypt</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2026 <span>RoadNextGen</span> Smarter Roads. Safer Tomorrow.</p>
+  </footer>
+
+</div><!-- /desktop-content -->
+
+
+<!-- ══════════════ MOBILE CONTENT ══════════════ -->
+<div class="mob-pane-container">
+
+  <!-- PANE: Sign In -->
+  <div class="mob-pane active" id="mob-signin">
+    <div class="mob-content-pad">
+
+      {% if user %}
+      {# ── MOBILE SIGNED-IN STATE ── #}
+      {% set role_icon = {
+        'citizen': 'bi-person-walking',
+        'admin':   'bi-building',
+        'crew':    'bi-cone-striped'
+      }.get(user.role, 'bi-person') %}
+
+      {% set role_label = {
+        'citizen': 'Citizen',
+        'admin':   'Municipality Admin',
+        'crew':    'Maintenance Crew'
+      }.get(user.role, user.role|capitalize) %}
+
+      {% set role_pill_class = {
+        'citizen': 'citizen',
+        'admin':   'admin',
+        'crew':    'crew'
+      }.get(user.role, 'citizen') %}
+
+      {% set dashboard_url = {
+        'citizen': url_for('citizen.dashboard'),
+        'admin':   url_for('admin.dashboard'),
+        'crew':    url_for('crew.dashboard')
+      }.get(user.role, '/') %}
+
+      <h2 style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:16px">Welcome back 👋</h2>
+
+      {# Avatar + identity card #}
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px;background:var(--surface-1);border:1px solid var(--border);border-radius:14px;">
+        {% if user.avatar %}
+          <img src="{{ user.avatar }}" alt="avatar"
+              style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border-s);flex-shrink:0;"/>
+        {% else %}
+          <div style="width:52px;height:52px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi {{ role_icon }}" style="color:#fff;font-size:22px;"></i>
+          </div>
+        {% endif %}
+        <div style="min-width:0;">
+          <div style="font-size:15px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ user.name or 'Welcome back' }}
+          </div>
+          <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ user.email }}
+          </div>
+          <div style="margin-top:5px;">
+            <span class="role-pill {{ role_pill_class }}" style="margin-bottom:0;font-size:10.5px;padding:3px 10px;">
+              <i class="bi {{ role_icon }}"></i>{{ role_label }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {# Active session badge #}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;font-size:12px;font-weight:600;color:#16a34a;">
+        <i class="bi bi-circle-fill" style="font-size:8px;"></i>Active session
+      </div>
+
+      {# Dashboard CTA #}
+      <a href="{{ dashboard_url }}"
+        class="btn-main btn-primary-solid"
+        style="text-decoration:none;margin-bottom:12px;display:flex;">
+        <i class="bi bi-speedometer2"></i>Go to Dashboard
+      </a>
+
+      {# Role-specific quick actions #}
+      {% if user.role == 'citizen' %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        <a href="{{ url_for('citizen.report') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-camera2" style="font-size:22px;color:var(--blue);"></i>Report Damage
+        </a>
+        <a href="{{ url_for('citizen.my_reports') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-list-check" style="font-size:22px;color:var(--teal);"></i>My Reports
+        </a>
+      </div>
+      {% elif user.role == 'admin' %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        <a href="{{ url_for('admin.reports') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-clipboard-data" style="font-size:22px;color:var(--blue);"></i>All Reports
+        </a>
+        <a href="{{ url_for('admin.workers') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-people-fill" style="font-size:22px;color:var(--teal);"></i>Manage Crew
+        </a>
+      </div>
+      {% elif user.role == 'crew' %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        <a href="{{ url_for('crew.workers') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-people" style="font-size:22px;color:var(--blue);"></i>My Workers
+        </a>
+        <a href="{{ url_for('crew.history') }}"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
+          <i class="bi bi-clock-history" style="font-size:22px;color:var(--teal);"></i>History
+        </a>
+      </div>
+      {% endif %}
+
+      {# Sign out #}
+      <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--muted);">Not you?</span>
+        <a href="{{ url_for('auth.logout') }}"
+          style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#dc2626;text-decoration:none;padding:6px 12px;border-radius:8px;border:1px solid #fecaca;background:#fef2f2;">
+          <i class="bi bi-box-arrow-right"></i>Sign Out
+        </a>
+      </div>
+
+      {% else %}
+      {# ── MOBILE SIGNED-OUT STATE (original) ── #}
+      <h2 style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:3px">Sign In</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Select your role to continue</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat,msg in messages %}
+      <div class="f-alert {{ 'error' if cat in ['danger','error'] else cat }}">
+        <i class="bi bi-{{ 'exclamation-circle' if cat in ['danger','error','warning'] else 'check-circle' }}"></i>
+        <span>{{ msg }}</span>
+      </div>
+      {% endfor %}{% endif %}
+      {% endwith %}
+
+      <div class="mob-role-tabs">
+        <button class="mob-role-tab active" id="mobrole-citizen" onclick="switchMobRole('citizen')">
+          <i class="bi bi-person-walking"></i>Citizen
+        </button>
+        <button class="mob-role-tab" id="mobrole-admin" onclick="switchMobRole('admin')">
+          <i class="bi bi-building"></i>Municipality<br>Admin
+        </button>
+        <button class="mob-role-tab" id="mobrole-crew" onclick="switchMobRole('crew')">
+          <i class="bi bi-cone-striped"></i>Maintenance<br>Crew
+        </button>
+      </div>
+
+      <!-- Citizen -->
+      <div id="mob-panel-citizen">
+        <div class="role-pill citizen"><i class="bi bi-person-walking"></i>Citizen Portal</div>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.6">Enter your Gmail to receive a one-time code.</p>
+        <form method="POST" action="{{ url_for('auth.citizen_send_otp') }}">
+          {% if request.args.get('show_name')=='1' %}
+          <div class="f-group">
+            <label class="f-label">Your Name</label>
+            <input type="text" name="name" class="f-input" placeholder="E.g. Arjun Kumar" required value="{{ request.args.get('prefill_name','') }}" autocomplete="name"/>
+          </div>
+          {% endif %}
+          <div class="f-group">
+            <label class="f-label">Gmail Address</label>
+            <input type="email" name="email" class="f-input" placeholder="you@gmail.com" required autocomplete="email" value="{{ request.args.get('prefill_email','') }}"/>
+          </div>
+          <button type="submit" class="btn-main btn-primary-solid mb-3"><i class="bi bi-envelope-at"></i>Send OTP Code</button>
+        </form>
+        <div class="divider">or</div>
+        <button type="button" class="btn-google" onclick="openTermsModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </button>
+        <p class="login-footer">Only <strong>@gmail.com</strong> accounts accepted.</p>
+      </div>
+
+      <!-- Admin -->
+      <div id="mob-panel-admin" style="display:none">
+        <div class="role-pill admin"><i class="bi bi-building"></i>Municipality Admin Portal</div>
+        <div class="f-alert info"><i class="bi bi-info-circle"></i><span>Admin accounts are provisioned by the system administrator.</span></div>
+        <form method="POST" action="{{ url_for('auth.staff_login') }}">
+          <input type="hidden" name="role" value="admin"/>
+          <div class="f-group">
+            <label class="f-label">Admin Email</label>
+            <input type="email" name="email" class="f-input" placeholder="admin@municipality.gov" required autocomplete="username"/>
+          </div>
+          <div class="f-group">
+            <label class="f-label">Password</label>
+            <div class="pw-wrap">
+              <input type="password" name="password" id="mobAdminPw" class="f-input" placeholder="Your password" required autocomplete="current-password"/>
+              <button type="button" class="pw-eye" onclick="togglePw('mobAdminPw','mobAdminEye')" tabindex="-1"><i class="bi bi-eye" id="mobAdminEye"></i></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-main btn-primary-solid mt-1"><i class="bi bi-building"></i>Sign In as Admin</button>
+        </form>
+        <p class="login-footer">Authorised municipality personnel only.</p>
+      </div>
+
+      <!-- Crew -->
+      <div id="mob-panel-crew" style="display:none">
+        <div class="role-pill crew"><i class="bi bi-cone-striped"></i>Maintenance Crew Portal</div>
+        <div class="f-alert info"><i class="bi bi-info-circle"></i><span>Crew credentials are issued by your municipality administrator.</span></div>
+        <form method="POST" action="{{ url_for('auth.staff_login') }}">
+          <input type="hidden" name="role" value="crew"/>
+          <div class="f-group">
+            <label class="f-label">Work Email</label>
+            <input type="email" name="email" class="f-input" placeholder="crew@municipality.gov" required autocomplete="username"/>
+          </div>
+          <div class="f-group">
+            <label class="f-label">Password</label>
+            <div class="pw-wrap">
+              <input type="password" name="password" id="mobCrewPw" class="f-input" placeholder="Your password" required autocomplete="current-password"/>
+              <button type="button" class="pw-eye" onclick="togglePw('mobCrewPw','mobCrewEye')" tabindex="-1"><i class="bi bi-eye" id="mobCrewEye"></i></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-main btn-primary-solid mt-1"><i class="bi bi-cone-striped"></i>Sign In as Team Head</button>
+        </form>
+        <p class="login-footer">Contact your municipality admin to reset credentials.</p>
+      </div>
+
+      {% endif %}{# end user check #}
+    </div>
+  </div>
+
+  <!-- PANE: About -->
+  <div class="mob-pane" id="mob-about">
+    <div class="mob-content-pad">
+      <div class="section-eyebrow" style="margin-bottom:12px"><i class="bi bi-info-circle-fill"></i>About</div>
+      <h2 style="font-size:22px;font-weight:900;color:var(--navy);margin-bottom:8px;letter-spacing:-.02em">What is RoadNextGen?</h2>
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.65;margin-bottom:20px">A civic-tech platform bridging the gap between citizens and the municipal workforce responsible for keeping roads safe.</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-camera-video-fill"></i></div><div><h4>AI Detection Engine</h4><p>YOLOv11-powered model classifies potholes, cracks, and waterlogging with 94%+ accuracy.</p></div></div>
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-map-fill"></i></div><div><h4>Live Hazard Map</h4><p>Every report is pinned on a live Leaflet map, giving full visibility into nearby hazards.</p></div></div>
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-arrow-repeat"></i></div><div><h4>Full Repair Lifecycle</h4><p>From report to crew assignment to marked-complete — every stakeholder stays informed.</p></div></div>
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-person-check-fill"></i></div><div><h4>Multi-Role Access</h4><p>Citizen, admin, and crew portals — each with tailored dashboards and permissions.</p></div></div>
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div><div><h4>Cloudinary Uploads</h4><p>Before/after repair photos stored securely for accountability and audit trails.</p></div></div>
+        <div class="mob-about-card"><div class="mob-about-icon"><i class="bi bi-bell-fill"></i></div><div><h4>Smart Notifications</h4><p>Citizens notified via email at every stage — accepted, assigned, and resolved.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANE: How It Works -->
+  <div class="mob-pane" id="mob-hiw">
+    <div class="mob-content-pad mob-hiw-bg">
+      <div class="section-eyebrow" style="margin-bottom:12px"><i class="bi bi-gear-fill"></i>How It Works</div>
+      <h2 style="color:#fff;font-size:22px;font-weight:900;margin-bottom:8px;letter-spacing:-.02em">Hazard to fix in 4 steps</h2>
+      <p style="color:rgba(255,255,255,.65);font-size:13.5px;line-height:1.65;margin-bottom:24px">RoadNextGen turns citizen observations into actionable repair tasks.</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="mob-step-card"><div class="mob-step-num">01</div><div><h4>Citizen Reports</h4><p>Photo submitted, AI classifies damage type and severity instantly. Pinned on the live map.</p></div></div>
+        <div class="mob-step-card"><div class="mob-step-num">02</div><div><h4>Admin Reviews</h4><p>Municipality admin verifies the report, sets priority, and assigns a repair crew.</p></div></div>
+        <div class="mob-step-card"><div class="mob-step-num">03</div><div><h4>Crew Dispatched</h4><p>Crew navigates to site, logs progress in real time, uploads before/after photos.</p></div></div>
+        <div class="mob-step-card"><div class="mob-step-num">04</div><div><h4>Resolved &amp; Verified</h4><p>Citizen notified via email, hazard removed from map automatically.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANE: Contact -->
+  <div class="mob-pane" id="mob-contact">
+    <div class="mob-content-pad">
+      <div class="section-eyebrow" style="margin-bottom:12px"><i class="bi bi-person-lines-fill"></i>Contact &amp; Connect</div>
+      <h2 style="font-size:22px;font-weight:900;color:var(--navy);margin-bottom:16px;letter-spacing:-.02em">Built with Passion by<br>Saravanan S</h2>
+      <div class="mob-contact-card">
+        <div class="avatar">👨‍💻</div>
+        <h3>Saravanan S</h3>
+        <p>Full-stack AI engineer passionate about multi-agent systems, LLM applications, and building tools that make life easier.</p>
+        <div class="contact-links" style="flex-direction:column;gap:8px">
+          <a href="https://github.com/Saravanan131201" target="_blank" class="contact-link github" style="justify-content:center"><i class="bi bi-github"></i>GitHub</a>
+          <a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank" class="contact-link linkedin" style="justify-content:center"><i class="bi bi-linkedin"></i>LinkedIn</a>
+          <a href="https://github.com/Saravanan131201/Tripswarm-using-Langgraph" target="_blank" class="contact-link source" style="justify-content:center"><i class="bi bi-code-square"></i>Source Code</a>
+        </div>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+          <p style="color:var(--muted);font-size:10.5px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.6px">Tech Stack</p>
+          <div class="tech-pills">
+            <span class="tech-pill">Python</span><span class="tech-pill">Flask</span><span class="tech-pill">YOLOv11</span><span class="tech-pill">MongoDB</span><span class="tech-pill">Bootstrap</span><span class="tech-pill">Google OAuth</span>
+          </div>
+        </div>
+      </div>
+      <div class="mob-info-item"><div class="info-item-icon"><i class="bi bi-envelope-fill"></i></div><div><h4>Get In Touch</h4><p>Interested in contributing, deploying, or learning more about RoadNextGen? Reach out via LinkedIn or GitHub.</p></div></div>
+      <div class="mob-info-item"><div class="mob-info-icon"><i class="bi bi-shield-lock-fill"></i></div><div><h4>Privacy First</h4><p>We only store your Gmail address, name, and avatar. Your data is never sold or shared.</p></div></div>
+      <div class="mob-info-item"><div class="info-item-icon"><i class="bi bi-globe2"></i></div><div><h4>Open for Deployment</h4><p>RoadNextGen can be deployed for any municipality or civic body. The platform is designed to scale to city-wide use.</p></div></div>
+      <div class="mob-info-item"><div class="info-item-icon"><i class="bi bi-code-slash"></i></div><div><h4>Tech Stack</h4><p>Flask · MongoDB · YOLOv11 · Cloudinary · Leaflet · Bootstrap 5 · Google OAuth · Flask-Mail · bcrypt</p></div></div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM TAB BAR -->
+  <nav class="mob-tab-bar">
+    <div class="mob-tabs">
+      <button class="mob-tab active" id="mobtab-signin" onclick="switchMobTab('signin')">
+        {% if user %}
+          <i class="bi bi-person-check"></i>Profile
+        {% else %}
+          <i class="bi bi-box-arrow-in-right"></i>Sign In
+        {% endif %}
+      </button>
+      <button class="mob-tab" id="mobtab-about" onclick="switchMobTab('about')">
+        <i class="bi bi-info-circle"></i>About
+      </button>
+      <button class="mob-tab" id="mobtab-hiw" onclick="switchMobTab('hiw')">
+        <i class="bi bi-gear"></i>How It Works
+      </button>
+      <button class="mob-tab" id="mobtab-contact" onclick="switchMobTab('contact')">
+        <i class="bi bi-envelope"></i>Contact
+      </button>
+    </div>
+  </nav>
+
+</div><!-- /mob-pane-container -->
+
+<!-- ══════════════ TERMS MODAL ══════════════ -->
+<div id="terms-modal" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+  <div class="terms-modal-inner">
+    <h2 id="terms-title">Before you continue</h2>
+    <p class="terms-sub">RoadNextGen will access the following from your Google account to create and manage your profile:</p>
+    <div class="terms-perm-item">
+      <span class="icon">👤</span>
+      <div>
+        <p class="perm-title">Full name</p>
+        <p class="perm-sub">Used to personalise your experience</p>
+      </div>
+    </div>
+    <div class="terms-perm-item">
+      <span class="icon">✉️</span>
+      <div>
+        <p class="perm-title">Email address</p>
+        <p class="perm-sub">Used as your account identifier</p>
+      </div>
+    </div>
+    <div class="terms-perm-item">
+      <span class="icon">🖼️</span>
+      <div>
+        <p class="perm-title">Profile picture</p>
+        <p class="perm-sub">Displayed on your account avatar</p>
+      </div>
+    </div>
+    <p class="terms-note">
+      We never sell your data or share it with third parties.<br>
+      By continuing you agree to our <a href="/terms">Terms of Service</a>.
+    </p>
+    <div class="terms-btn-row">
+      <button class="terms-cancel" onclick="closeTermsModal()">Cancel</button>
+      <a id="terms-agree-btn" href="{{ url_for('auth.google_login') }}" class="terms-agree">Agree &amp; Continue</a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+/* ── Theme — same behavior as base.html ── */
+const html = document.documentElement;
+
+function toggleTheme(){
+  const dark = html.dataset.theme === 'dark';
+
+  html.dataset.theme = dark ? 'light' : 'dark';
+
+  const icon = document.getElementById('themeIcon');
+
+  if(icon){
+    icon.className = dark
+      ? 'bi bi-moon-stars'
+      : 'bi bi-sun';
+  }
+
+  localStorage.setItem('rv-theme', html.dataset.theme);
+
+  document.dispatchEvent(
+    new CustomEvent('themeChange', {
+      detail: html.dataset.theme
+    })
+  );
+}
+
+/* Restore saved theme exactly like base.html */
+(function(){
+  const saved = localStorage.getItem('rv-theme') || 'light';
+
+  html.dataset.theme = saved;
+
+  const icon = document.getElementById('themeIcon');
+
+  if(icon){
+    icon.className =
+      saved === 'dark'
+        ? 'bi bi-sun'
+        : 'bi bi-moon-stars';
+  }
+})();
+
+
+/* ── Desktop role tabs ── */
+function switchRole(r){
+  ['citizen','admin','crew'].forEach(function(x){
+    document.getElementById('panel-'+x).classList.toggle('hidden', x!==r);
+    document.getElementById('tab-'+x).classList.toggle('active', x===r);
+  });
+}
+
+/* ── Mobile bottom tabs ── */
+function switchMobTab(tab){
+  ['signin','about','hiw','contact'].forEach(function(x){
+    document.getElementById('mob-'+x).classList.toggle('active', x===tab);
+    document.getElementById('mobtab-'+x).classList.toggle('active', x===tab);
+  });
+}
+
+/* ── Mobile role sub-tabs ── */
+function switchMobRole(r){
+  ['citizen','admin','crew'].forEach(function(x){
+    document.getElementById('mob-panel-'+x).style.display = x===r ? 'block' : 'none';
+    document.getElementById('mobrole-'+x).classList.toggle('active', x===r);
+  });
+}
+
+/* ── Password toggle ── */
+function togglePw(id, eyeId){
+  var i=document.getElementById(id), e=document.getElementById(eyeId);
+  if(i.type==='password'){i.type='text'; e.classList.replace('bi-eye','bi-eye-slash');}
+  else{i.type='password'; e.classList.replace('bi-eye-slash','bi-eye');}
+}
+
+
+/* ── OTP box behaviour ── */
+function assembleOtp(){
+  var boxes=document.querySelectorAll('#otpBoxes .otp-box');
+  document.getElementById('otpHidden').value=Array.from(boxes).map(function(b){return b.value;}).join('');
+}
+(function initOtpBoxes(){
+  var boxes=document.querySelectorAll('.otp-box');
+  boxes.forEach(function(box,i){
+    box.addEventListener('input',function(){
+      box.value=box.value.replace(/\D/g,'');
+      if(box.value.length===1 && i<boxes.length-1) boxes[i+1].focus();
+    });
+    box.addEventListener('keydown',function(e){
+      if(e.key==='Backspace' && !box.value && i>0) boxes[i-1].focus();
+    });
+    box.addEventListener('paste',function(e){
+      var txt=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+      boxes.forEach(function(b,j){b.value=txt[j]||'';});
+      boxes[Math.min(txt.length,boxes.length-1)].focus();
+      e.preventDefault();
+    });
+  });
+})();
+
+/* ── OTP countdown timer ── */
+(function initTimer(){
+  var otpStep=document.getElementById('step-otp');
+  if(!otpStep || otpStep.style.display==='none') return;
+  var secs=600;
+  var t=setInterval(function(){
+    secs--;
+    var m=Math.floor(secs/60), s=secs%60;
+    var el=document.getElementById('otpTimer');
+    if(el) el.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    if(secs<=0){clearInterval(t); if(el) el.textContent='Expired';}
+    if(secs===540){
+      var rb=document.getElementById('resendBtn');
+      if(rb) rb.disabled=false;
+    }
+  },1000);
+})();
+
+/* ── Sync active_tab from Jinja to mobile role tabs ── */
+(function syncMobRole(){
+  var activeTab='{{ active_tab or "citizen" }}';
+  if(['admin','crew'].indexOf(activeTab)>-1){
+    switchMobRole(activeTab);
+  }
+})();
+
+/* ── Desktop nav active link on scroll ── */
+var navLinks=document.querySelectorAll('.nav-link');
+window.addEventListener('scroll',function(){
+  var y=window.scrollY+80;
+  ['home','about','how-section','contact-section'].forEach(function(id,idx){
+    var el=document.getElementById(id);
+    if(el && y>=el.offsetTop && y<el.offsetTop+el.offsetHeight){
+      navLinks.forEach(function(l){l.classList.remove('active');});
+      if(navLinks[idx]) navLinks[idx].classList.add('active');
+    }
+  });
+},{passive:true});
+
+
+/* ── Terms Modal ── */
+function openTermsModal(){
+  document.getElementById('terms-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeTermsModal(){
+  document.getElementById('terms-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+/* Close on backdrop click */
+document.getElementById('terms-modal').addEventListener('click', function(e){
+  if(e.target === this) closeTermsModal();
+});
+/* Close on Escape key */
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeTermsModal();
+});
+
+</script>
+
+
+</body>
+</html>

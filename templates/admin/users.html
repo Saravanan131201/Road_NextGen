@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+{% block title %}User Management — Road Next{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+
+{% block extra_css %}
+.user-row-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:box-shadow .2s;margin-bottom:6px}
+.user-row-card:hover{box-shadow:var(--rv-shadow)}
+.user-av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff}
+.role-tab-btn{padding:8px 18px;border-radius:8px;border:1.5px solid var(--rv-border);background:none;color:var(--rv-text-muted);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:inherit;transition:all .2s}
+.role-tab-btn.active{background:var(--rv-primary);color:#fff;border-color:var(--rv-primary)}
+.role-tab-btn:hover:not(.active){border-color:var(--rv-primary-light);color:var(--rv-primary-light)}
+.count-chip{font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.25);font-weight:700}
+.role-tab-btn:not(.active) .count-chip{background:var(--rv-surface-2);color:var(--rv-text-muted)}
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px}
+
+.photo-upload-box{border:2px dashed var(--rv-border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--rv-surface-2);position:relative;overflow:hidden}
+.photo-upload-box:hover{border-color:var(--rv-primary);background:rgba(var(--rv-primary-rgb),.04)}
+.photo-upload-box.has-photo{border-style:solid;border-color:var(--rv-primary)}
+.photo-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--rv-primary);margin:0 auto 8px;display:block}
+.photo-upload-hint{font-size:12px;color:var(--rv-text-muted)}
+
+{% endblock %}
+
+{% block content %}
+<!-- Role Stats Cards -->
+<div class="row g-3 mb-4">
+  {% set total_users = (role_counts.get('citizen',0) + role_counts.get('admin',0) + role_counts.get('crew',0)) %}
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon primary"><i class="bi bi-people"></i></div>
+      <div><div class="rv-stat-value">{{ total_users }}</div><div class="rv-stat-label">Total Users</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon accent"><i class="bi bi-person-walking"></i></div>
+      <div><div class="rv-stat-value">{{ role_counts.get('citizen', 0) }}</div><div class="rv-stat-label">Citizens</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon warning"><i class="bi bi-cone-striped"></i></div>
+      <div><div class="rv-stat-value">{{ role_counts.get('crew', 0) }}</div><div class="rv-stat-label">Team Heads</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon danger"><i class="bi bi-building"></i></div>
+      <div><div class="rv-stat-value">{{ role_counts.get('admin', 0) }}</div><div class="rv-stat-label">Admins</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Role Tabs -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;justify-content:space-between">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="role-tab-btn {{ 'active' if not current_role }}"
+            onclick="filterRole('')">
+      <i class="bi bi-grid-2x2"></i> All
+      <span class="count-chip">{{ total_users }}</span>
+    </button>
+    <button class="role-tab-btn {{ 'active' if current_role == 'citizen' }}"
+            onclick="filterRole('citizen')" style="{{ 'background:#0891b2;border-color:#0891b2;color:#fff' if current_role=='citizen' else '' }}">
+      <i class="bi bi-person-walking"></i> Citizens
+      <span class="count-chip">{{ role_counts.get('citizen', 0) }}</span>
+    </button>
+    <button class="role-tab-btn {{ 'active' if current_role == 'crew' }}"
+            onclick="filterRole('crew')" style="{{ 'background:#d97706;border-color:#d97706;color:#fff' if current_role=='crew' else '' }}">
+      <i class="bi bi-cone-striped"></i> Team Heads
+      <span class="count-chip">{{ role_counts.get('crew', 0) }}</span>
+    </button>
+    <button class="role-tab-btn {{ 'active' if current_role == 'admin' }}"
+            onclick="filterRole('admin')" style="{{ 'background:#7c3aed;border-color:#7c3aed;color:#fff' if current_role=='admin' else '' }}">
+      <i class="bi bi-building"></i> Admins
+      <span class="count-chip">{{ role_counts.get('admin', 0) }}</span>
+    </button>
+
+  </div>
+  <!-- Add Admin Button -->
+  <button class="rv-btn rv-btn-primary" onclick="showAddAdminModal()">
+    <i class="bi bi-person-plus"></i> Add Admin
+  </button>
+</div>
+
+<!-- Filter Bar (hidden for workers tab — workers use their own inline filters) -->
+{% if current_role != 'workers' %}
+<div class="rv-card mb-4" style="padding:16px">
+  <form method="GET" id="filterForm">
+    <input type="hidden" name="role" id="roleInput" value="{{ current_role }}"/>
+    <div class="filter-bar">
+      <!-- Search -->
+      <div style="flex:2;min-width:220px">
+        <label class="rv-form-label">Search</label>
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:14px"></i>
+          <input type="text" name="search" value="{{ current_search }}"
+                 class="rv-form-control" style="padding-left:36px"
+                 placeholder="Name, email or phone…"/>
+        </div>
+      </div>
+
+      <!-- Team filter (crew only) -->
+      {% if current_role == 'crew' or not current_role %}
+      <div style="min-width:160px">
+        <label class="rv-form-label">Team</label>
+        <select name="team" class="rv-form-control">
+          <option value="">All Teams</option>
+          {% for tk, tv in teams.items() %}
+          <option value="{{ tk }}" {{ 'selected' if current_team == tk }}>{{ tv.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <!-- Status filter -->
+      <div style="min-width:140px">
+        <label class="rv-form-label">Status</label>
+        <select name="status" class="rv-form-control">
+          <option value="">All Status</option>
+          <option value="active" {{ 'selected' if current_status == 'active' }}>✅ Active</option>
+          <option value="inactive" {{ 'selected' if current_status == 'inactive' }}>❌ Inactive</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;align-self:flex-end">
+        <button type="submit" class="rv-btn rv-btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+        <a href="{{ url_for('admin.users') }}" class="rv-btn rv-btn-secondary"><i class="bi bi-x"></i> Clear</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% else %}
+{# Hidden form so filterRole() JS still works on the workers tab #}
+<form method="GET" id="filterForm" style="display:none">
+  <input type="hidden" name="role" id="roleInput" value="{{ current_role }}"/>
+</form>
+{% endif %}
+
+<!-- Results count -->
+{% if current_role != 'workers' %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div style="font-size:13px;color:var(--rv-text-muted)">
+    Showing <strong>{{ users | length }}</strong> of <strong>{{ total }}</strong> users
+    {% if current_search %} matching "<strong>{{ current_search }}</strong>"{% endif %}
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════ User List (all tabs except workers) ══════════════ -->
+{% if users %}
+<div id="userList">
+  {% for u in users %}
+  {% set role_cfg = {
+    'citizen': {'color': '#0891b2', 'bg': 'rgba(8,145,178,.12)', 'icon': 'bi-person-walking', 'label': 'Citizen'},
+    'admin':   {'color': '#7c3aed', 'bg': 'rgba(124,58,237,.12)', 'icon': 'bi-building', 'label': 'Admin'},
+    'crew':    {'color': '#d97706', 'bg': 'rgba(217,119,6,.12)', 'icon': 'bi-cone-striped', 'label': 'Team Head'}
+  }.get(u.role, {'color': '#64748b', 'bg': 'rgba(100,116,139,.12)', 'icon': 'bi-person', 'label': u.role|title}) %}
+
+  <div class="user-row-card" id="ucard-{{ u._id }}">
+    <!-- Avatar -->
+    {% if u.avatar %}
+    <img src="{{ u.avatar }}" class="user-av" alt="" style="background:var(--rv-border)"/>
+    {% else %}
+    <div class="user-av" style="background:{{ role_cfg.color }}">{{ (u.name or u.email or 'U')[0].upper() }}</div>
+    {% endif %}
+
+    <!-- Info -->
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+        <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">{{ u.name or '(no name)' }}</span>
+        <!-- Role badge -->
+        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:{{ role_cfg.bg }};color:{{ role_cfg.color }};white-space:nowrap">
+          <i class="bi {{ role_cfg.icon }} me-1"></i>{{ role_cfg.label }}
+        </span>
+        <!-- Team badge (crew) -->
+        {% if u.role == 'crew' and u.team %}
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--rv-surface-2);color:var(--rv-text-muted);border:1px solid var(--rv-border)">
+          {{ teams.get(u.team, {}).get('name', u.team) }}
+        </span>
+        {% endif %}
+        <!-- Active/Inactive -->
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:{{ 'rgba(16,185,129,.12)' if u.is_active else 'rgba(239,68,68,.12)' }};color:{{ '#059669' if u.is_active else '#dc2626' }}">
+          {{ '● Active' if u.is_active else '● Inactive' }}
+        </span>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        {% if u.email %}
+        <span style="font-size:12px;color:var(--rv-text-muted)"><i class="bi bi-envelope me-1"></i>{{ u.email }}</span>
+        {% endif %}
+        {% if u.phone %}
+        <span style="font-size:12px;color:var(--rv-text-muted)"><i class="bi bi-phone me-1"></i>{{ u.phone }}</span>
+        {% endif %}
+        <span style="font-size:11px;color:var(--rv-text-light)">
+          {% set providers = u.auth_provider if u.auth_provider is iterable and u.auth_provider is not string else [u.auth_provider] %}
+          {% for p in providers %}
+            <i class="bi bi-{{ 'google' if p == 'google' else 'phone' if p == 'phone' else 'patch-check' if p == 'otp' else 'key' }} me-1"></i>{{ p | title }}{% if not loop.last %} + {% endif %}
+          {% endfor %}
+        </span>
+        <span style="font-size:11px;color:var(--rv-text-light)">Joined {{ u.created_at[:10] if u.created_at else '—' }}</span>
+      </div>
+    </div>
+
+    <!-- Replace the role change select in admin/users.html user rows -->
+    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+      {% if u._id != session.get('user_id') %}
+
+        {% if u.role in ('admin', 'citizen') %}
+        <!-- Toggle active status for admin and citizen only -->
+        <button class="rv-btn rv-btn-sm {{ 'rv-btn-secondary' if u.is_active else 'rv-btn-success' }}"
+                onclick="toggleStatus('{{ u._id }}', {{ 'true' if u.is_active else 'false' }}, this)"
+                title="{{ 'Deactivate' if u.is_active else 'Activate' }}">
+          <i class="bi bi-{{ 'person-slash' if u.is_active else 'person-check' }}"></i>
+        </button>
+        {% else %}
+        <!-- Crew managed via Team page -->
+        <span style="font-size:11px;color:var(--rv-text-muted);padding:0 8px;font-style:italic">Manage in Teams</span>
+        {% endif %}
+
+      {% else %}
+      <span style="font-size:12px;color:var(--rv-text-muted);padding:0 8px">(You)</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if total > per_page %}
+{% set total_pages = ((total / per_page) | round(0, 'ceil') | int) %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;flex-wrap:wrap;gap:12px">
+  <div style="font-size:13px;color:var(--rv-text-muted)">Page {{ page }} of {{ total_pages }}</div>
+  <div class="rv-pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page-1 }}&role={{ current_role }}&search={{ current_search }}&team={{ current_team }}&status={{ current_status }}" class="rv-page-btn"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+    <a href="?page={{ p }}&role={{ current_role }}&search={{ current_search }}&team={{ current_team }}&status={{ current_status }}"
+       class="rv-page-btn {{ 'active' if p == page }}">{{ p }}</a>
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="?page={{ page+1 }}&role={{ current_role }}&search={{ current_search }}&team={{ current_team }}&status={{ current_status }}" class="rv-page-btn"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div style="text-align:center;padding:72px 24px;color:var(--rv-text-muted)">
+  <i class="bi bi-people" style="font-size:56px;display:block;margin-bottom:16px;color:var(--rv-text-light)"></i>
+  <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No users found</h3>
+  <p style="font-size:14px">Try adjusting the filters or search term.</p>
+  <a href="{{ url_for('admin.users') }}" class="rv-btn rv-btn-secondary mt-3">Clear Filters</a>
+</div>
+{% endif %}
+
+
+<!-- ── Add Admin Modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="addAdminModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-building me-2 text-primary"></i>Add New Admin
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="addAdminErr" class="alert alert-danger d-none" style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+        <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:9px;padding:12px 14px;font-size:13px;color:#7c3aed;margin-bottom:16px">
+          <i class="bi bi-shield-lock me-2"></i>Admin accounts have full access to the municipality dashboard, all reports and team management.
+        </div>
+
+        <!-- Photo Upload -->
+        <div class="mb-3">
+          <label class="rv-form-label">Profile Photo <span style="color:#ef4444">*</span></label>
+          <div class="photo-upload-box" id="adminPhotoBox" onclick="document.getElementById('adminPhotoInput').click()">
+            <img id="adminPhotoPreview" class="photo-preview d-none" src="" alt="Preview"/>
+            <div id="adminPhotoPlaceholder">
+              <i class="bi bi-person-circle" style="font-size:36px;color:var(--rv-text-light);display:block;margin-bottom:6px"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--rv-text-muted)">Click to upload photo</div>
+              <div class="photo-upload-hint">JPG, PNG or WEBP · Max 2 MB</div>
+            </div>
+          </div>
+          <input type="file" id="adminPhotoInput" accept="image/*" style="display:none"
+                 onchange="handleAdminPhotoSelect(event)"/>
+          <div id="adminPhotoErr" style="font-size:12px;color:#ef4444;margin-top:4px;display:none">
+            Profile photo is required.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="rv-form-label">Full Name <span style="color:#ef4444">*</span></label>
+          <input type="text" id="adminName" class="rv-form-control" placeholder="e.g. Dr. Priya Sharma"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Email Address <span style="color:#ef4444">*</span></label>
+          <input type="email" id="adminEmail" class="rv-form-control" placeholder="admin@municipality.gov"/>
+        </div>
+        <div class="mb-1">
+          <label class="rv-form-label">Password <span style="color:#ef4444">*</span> <span style="font-weight:400;color:var(--rv-text-muted)">(min. 8 characters)</span></label>
+          <div style="position:relative">
+            <input type="password" id="adminPw" class="rv-form-control" style="padding-right:42px" placeholder="Create a strong password"/>
+            <button type="button" onclick="togglePwVis('adminPw','adminPwEye')"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--rv-text-muted);cursor:pointer">
+              <i class="bi bi-eye" id="adminPwEye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="addAdminSaveBtn" onclick="saveNewAdmin()">
+          <i class="bi bi-person-plus"></i> Create Admin
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toggle Status Confirm Modal ───────────────────────────────────────────── -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:14px;font-weight:700">
+          <i id="toggleConfirmIcon" class="bi bi-person-slash text-danger me-2"></i>
+          <span id="toggleConfirmTitle">Deactivate User</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="font-size:13px;color:var(--rv-text-muted);line-height:1.6">
+        <p id="toggleConfirmBody" style="margin:0">
+          Are you sure you want to proceed?
+        </p>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border);gap:8px">
+        <button class="rv-btn rv-btn-secondary rv-btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button id="toggleConfirmActionBtn" class="rv-btn rv-btn-danger rv-btn-sm"
+                onclick="_executeToggle()">
+          Deactivate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Role filter ─────────────────────────────────────── */
+function filterRole(role) {
+  document.getElementById('roleInput').value = role;
+  document.getElementById('filterForm').submit();
+}
+
+/* ── Password visibility ─────────────────────────────── */
+function togglePwVis(inputId, iconId) {
+  const el = document.getElementById(inputId);
+  const ic = document.getElementById(iconId);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  ic.className = el.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+/* ── Admin photo handling ─────────────────────────────── */
+let _adminPhotoB64 = '';
+
+function handleAdminPhotoSelect(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Photo must be under 2 MB.', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _adminPhotoB64 = e.target.result;          // full data-URL; backend strips prefix
+    const preview = document.getElementById('adminPhotoPreview');
+    const placeholder = document.getElementById('adminPhotoPlaceholder');
+    preview.src = _adminPhotoB64;
+    preview.classList.remove('d-none');
+    placeholder.style.display = 'none';
+    document.getElementById('adminPhotoBox').classList.add('has-photo');
+    document.getElementById('adminPhotoErr').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Toggle active/inactive — Bootstrap modal confirm ─── */
+let _pendingToggle = null;  // {userId, isCurrentlyActive, btn}
+
+function toggleStatus(userId, isCurrentlyActive, btn) {
+  _pendingToggle = { userId, isCurrentlyActive, btn };
+  const action   = isCurrentlyActive ? 'Deactivate' : 'Activate';
+  const iconCls  = isCurrentlyActive ? 'bi-person-slash text-danger' : 'bi-person-check text-success';
+  const badgeCls = isCurrentlyActive ? 'danger' : 'success';
+  const bodyMsg  = isCurrentlyActive
+    ? 'This user will <strong>lose access</strong> to the platform immediately. You can reactivate them later.'
+    : 'This user will <strong>regain full access</strong> to the platform.';
+
+  document.getElementById('toggleConfirmTitle').textContent  = `${action} User`;
+  document.getElementById('toggleConfirmIcon').className     = `bi ${iconCls} me-2`;
+  document.getElementById('toggleConfirmBody').innerHTML     = bodyMsg;
+  document.getElementById('toggleConfirmActionBtn').textContent = action;
+  document.getElementById('toggleConfirmActionBtn').className   =
+    `rv-btn rv-btn-${badgeCls}`;
+
+  new bootstrap.Modal(document.getElementById('toggleStatusModal')).show();
+}
+
+async function _executeToggle() {
+  if (!_pendingToggle) return;
+  const { userId, isCurrentlyActive, btn } = _pendingToggle;
+  _pendingToggle = null;
+  bootstrap.Modal.getInstance(document.getElementById('toggleStatusModal')).hide();
+
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/admin/api/users/${userId}/toggle-status`, { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      showToast(`User ${d.is_active ? 'activated' : 'deactivated'}.`,
+                d.is_active ? 'success' : 'warning');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(d.error || 'Failed.', 'critical');
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('Network error.', 'critical');
+    btn.disabled = false;
+  }
+}
+
+/* ── Show Add Admin modal ─────────────────────────────── */
+function showAddAdminModal() {
+  _adminPhotoB64 = '';
+  document.getElementById('addAdminErr').classList.add('d-none');
+  document.getElementById('adminPhotoErr').style.display = 'none';
+  document.getElementById('adminPhotoPreview').classList.add('d-none');
+  document.getElementById('adminPhotoPlaceholder').style.display = '';
+  document.getElementById('adminPhotoBox').classList.remove('has-photo');
+  document.getElementById('adminPhotoInput').value = '';
+  ['adminName', 'adminEmail', 'adminPw'].forEach(id => document.getElementById(id).value = '');
+  new bootstrap.Modal(document.getElementById('addAdminModal')).show();
+}
+
+/* ── Save new admin ───────────────────────────────────── */
+async function saveNewAdmin() {
+  const errEl = document.getElementById('addAdminErr');
+  errEl.classList.add('d-none');
+
+  // Validate photo first
+  if (!_adminPhotoB64) {
+    document.getElementById('adminPhotoErr').style.display = 'block';
+    document.getElementById('adminPhotoBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const btn = document.getElementById('addAdminSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating…';
+
+  const payload = {
+    name:      document.getElementById('adminName').value.trim(),
+    email:     document.getElementById('adminEmail').value.trim(),
+    password:  document.getElementById('adminPw').value,
+    photo_b64: _adminPhotoB64,
+  };
+
+  try {
+    const r = await fetch('/admin/api/users/create-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addAdminModal')).hide();
+      showToast('Admin account created!', 'success', 'Account Created');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      errEl.textContent = d.error || 'Failed.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error.';
+    errEl.classList.remove('d-none');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-person-plus"></i> Create Admin';
+}
+</script>
+{% endblock %}

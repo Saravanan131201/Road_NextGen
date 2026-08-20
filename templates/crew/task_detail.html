@@ -1,0 +1,951 @@
+{% extends "base.html" %}
+{% block title %}Task Detail — Road NextGen{% endblock %}
+{% block page_title %}Task Detail{% endblock %}
+
+
+
+{% block profile_link %}{% endblock %}
+
+{% block extra_css %}
+.detail-section {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius);
+  padding: 20px;
+  box-shadow: var(--rv-shadow);
+  margin-bottom: 20px;
+}
+.detail-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--rv-text-muted);
+  margin-bottom: 5px;
+}
+.detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rv-text);
+}
+.pipeline-wrap {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+}
+.pip-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+.pip-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  border: 2px solid var(--rv-border);
+  background: var(--rv-surface-2);
+  color: var(--rv-text-light);
+  transition: all .3s;
+  z-index: 1;
+}
+.pip-dot.done {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+.pip-dot.current {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(59,130,246,.2);
+}
+.pip-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rv-text-light);
+  white-space: nowrap;
+}
+.pip-label.done   { color: #10b981; }
+.pip-label.current { color: #3b82f6; }
+.pip-line {
+  flex: 1;
+  height: 3px;
+  background: var(--rv-border);
+  margin: 0 4px;
+  margin-bottom: 20px;
+  border-radius: 2px;
+  transition: background .3s;
+}
+.pip-line.done { background: #10b981; }
+
+.worker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  background: var(--rv-surface-2);
+  border: 1px solid var(--rv-border);
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  margin: 3px;
+}
+.worker-chip img,
+.worker-chip .av {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.worker-chip .av {
+  background: linear-gradient(135deg,var(--rv-primary),var(--rv-accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+.photo-upload-box {
+  border: 2px dashed var(--rv-border);
+  border-radius: var(--rv-radius);
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--rv-surface-2);
+}
+.photo-upload-box:hover {
+  border-color: var(--rv-primary-light);
+  background: var(--rv-primary-glow);
+}
+.photo-thumb {
+  width: 100%;
+  border-radius: var(--rv-radius-sm);
+  object-fit: cover;
+  max-height: 180px;
+  border: 1px solid var(--rv-border);
+}
+
+
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+{% endblock %}
+
+{% block content %}
+
+{% if not task %}
+<div class="detail-section" style="text-align:center;padding:60px">
+  <i class="bi bi-exclamation-circle" style="font-size:40px;color:var(--rv-text-light);display:block;margin-bottom:12px"></i>
+  <p style="font-size:15px;color:var(--rv-text-muted)">Task not found or you don't have access.</p>
+  <a href="{{ url_for('crew.dashboard') }}" class="rv-btn rv-btn-primary mt-3">← Back to Dashboard</a>
+</div>
+{% else %}
+
+{% set priority_colors = {'critical':'#ef4444','high':'#f97316','medium':'#3b82f6','low':'#22c55e'} %}
+{% set priority_color  = priority_colors.get(task.priority, '#3b82f6') %}
+{% set sev_colors      = {'critical':'#ef4444','high':'#f97316','medium':'#fbbf24','low':'#22c55e'} %}
+{% set sev_color       = sev_colors.get(report.severity if report else 'low', '#94a3b8') %}
+{% set STATUS_IDX      = {'assigned':0,'in_progress':1,'completed':2} %}
+{% set curr_idx        = STATUS_IDX.get(task.status, 0) %}
+{% set damage_display  = {
+    'pothole':'Pothole',
+    'alligator_cracking':'Alligator Cracking',
+    'lateral_cracking':'Lateral Cracking',
+    'longitudinal_cracking':'Longitudinal Cracking',
+    'other':'Other'
+} %}
+{% set dmg_colors = {
+    'pothole':'#8b5cf6',
+    'alligator_cracking':'#ef4444',
+    'lateral_cracking':'#f97316',
+    'longitudinal_cracking':'#fbbf24',
+    'other':'#94a3b8'
+} %}
+
+<div class="row g-4">
+
+  <!-- ── LEFT COLUMN ─────────────────────────────────────────── -->
+  <div class="col-12 col-lg-7">
+
+    <!-- Header card -->
+    <div class="detail-section">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <a href="{{ url_for('crew.dashboard') }}" class="rv-btn rv-btn-secondary rv-btn-sm rv-btn-icon">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 10px;border-radius:20px;background:{{ priority_color }}18;color:{{ priority_color }}">
+              {{ task.priority }} priority
+            </span>
+            <span class="badge-status badge-status-{{ task.status }}">
+              {{ task.status | replace('_',' ') | title }}
+            </span>
+          </div>
+          <h2 style="font-size:17px;font-weight:700;margin:0">
+            {{ (report.display_names | join(', ')) if report and report.display_names else (damage_display.get(report.damage_type if report else 'other', 'Road Damage')) }} Repair
+          </h2>
+          <div style="font-size:12px;color:var(--rv-text-light);margin-top:3px">
+            Task ID: <code style="font-size:11px">{{ task._id }}</code>
+          </div>
+        </div>
+        {% if report and report.images and (report.images.annotated or report.images.original) %}
+        <img src="{{ report.images.annotated or report.images.original }}"
+             style="width:64px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--rv-border);flex-shrink:0;cursor:pointer"
+             onclick="showImgModal('{{ report.images.annotated or report.images.original }}')"
+             title="Click to enlarge" alt=""/>
+        {% endif %}
+      </div>
+
+      <!-- Status pipeline -->
+      <div class="detail-label mb-2">Progress</div>
+      <div class="pipeline-wrap">
+        {% set pip_steps  = ['assigned','in_progress','completed'] %}
+        {% set pip_labels = ['Assigned','In Progress','Completed'] %}
+        {% set pip_icons  = ['bi-person-check','bi-tools','bi-check-circle-fill'] %}
+        {% for i in range(pip_steps|length) %}
+          {% set is_done    = i < curr_idx %}
+          {% set is_current = i == curr_idx %}
+          <div class="pip-step">
+            <div class="pip-dot {{ 'done' if is_done else ('current' if is_current else '') }}">
+              {% if is_done %}
+                <i class="bi bi-check" style="font-size:14px"></i>
+              {% elif is_current %}
+                <i class="bi {{ pip_icons[i] }}" style="font-size:14px"></i>
+              {% else %}
+                {{ i + 1 }}
+              {% endif %}
+            </div>
+            <div class="pip-label {{ 'done' if is_done else ('current' if is_current else '') }}">
+              {{ pip_labels[i] }}
+            </div>
+          </div>
+          {% if not loop.last %}
+          <div class="pip-line {{ 'done' if i < curr_idx }}"></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        {% if task.status == 'assigned' %}
+          {% if assigned_workers %}
+          <button class="rv-btn rv-btn-primary" onclick="updateStatus('{{ task._id }}','in_progress',this)" style="flex:1;justify-content:center">
+            <i class="bi bi-play-circle-fill"></i> Start Repair Work
+          </button>
+          {% else %}
+          <div style="width:100%;padding:13px 16px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--rv-radius-sm);display:flex;align-items:center;gap:10px">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#d97706;font-size:16px;flex-shrink:0"></i>
+            <div style="font-size:13px;color:#92400e">
+              <strong>Assign workers first</strong> before starting repair work.
+              <button class="rv-btn rv-btn-sm" style="background:rgba(245,158,11,.15);color:#d97706;margin-left:8px" onclick="showAssignWorkersModal()">
+                <i class="bi bi-people"></i> Assign Now
+              </button>
+            </div>
+          </div>
+          {% endif %}
+        {% elif task.status == 'in_progress' %}
+        <button class="rv-btn rv-btn-success" onclick="confirmComplete()" style="flex:1;justify-content:center">
+          <i class="bi bi-check-circle-fill"></i> Mark as Completed
+        </button>
+        {% else %}
+        <div style="width:100%;padding:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:var(--rv-radius-sm);text-align:center">
+          <i class="bi bi-check-all" style="font-size:22px;color:#059669;display:block;margin-bottom:4px"></i>
+          <div style="font-size:14px;font-weight:700;color:#059669">Task Completed</div>
+          {% if fmt_completed_at %}
+          <div style="font-size:12px;color:var(--rv-text-muted);margin-top:3px">
+            {{ fmt_completed_at if fmt_completed_at else '' }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if report and report.location and report.location.coordinates %}
+        {% set coords = report.location.coordinates %}
+        <a href="https://www.google.com/maps?q={{ coords[1] }},{{ coords[0] }}"
+          target="_blank"
+          class="rv-btn rv-btn-secondary"
+          style="flex:0 0 auto">
+          <i class="bi bi-navigation-fill text-primary"></i> Navigate
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Mobile design for site map -->
+    <div class="d-block d-lg-none">
+
+      {# Site map #}
+      <div class="detail-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="rv-card-title"><i class="bi bi-geo-alt me-2 text-danger"></i>Repair Site</div>
+          {% if report and report.location and report.location.coordinates %}
+          <a href="https://www.google.com/maps?q={{ report.location.coordinates[1] }},{{ report.location.coordinates[0] }}"
+            target="_blank" class="rv-btn rv-btn-secondary rv-btn-sm">
+            <i class="bi bi-navigation"></i> Navigate
+          </a>
+          {% endif %}
+        </div>
+        <div id="taskMapMobile" class="rv-map" style="height:220px"></div>
+      </div>
+
+      {# Damage image #}
+      {% if report and report.images %}
+      <div class="detail-section">
+        <div class="rv-card-title mb-3"><i class="bi bi-image me-2 text-primary"></i>Reported Damage Image</div>
+        {% set show_img = report.images.annotated or report.images.original %}
+        {% if show_img %}
+        <img src="{{ show_img }}"
+            style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);cursor:zoom-in;max-height:220px;object-fit:contain;background:#000"
+            onclick="showImgModal('{{ show_img }}')" alt="Damage"/>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Report details -->
+    <div class="detail-section">
+      <div class="rv-card-title mb-4">
+        <i class="bi bi-info-circle me-2 text-primary"></i>Report Details
+      </div>
+      <div class="row g-3">
+
+        <!-- Damage types (multi-class aware) -->
+        <div class="col-12">
+          <div class="detail-label">Damage Type(s)</div>
+          {% if report %}
+            {% set dtypes = report.damage_types if report.damage_types else [] %}
+            {% set dlabels = report.display_names if report.display_names else [] %}
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+            {% for i in range(dtypes|length) %}
+              {% set dt = dtypes[i] %}
+              {% set label = dlabels[i] if dlabels|length > i else dt|replace('_',' ')|title %}
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 11px;border-radius:20px;background:{{ dmg_colors.get(dt,'#94a3b8') }}18;color:{{ dmg_colors.get(dt,'#94a3b8') }};border:1px solid {{ dmg_colors.get(dt,'#94a3b8') }}35">
+                <span style="width:7px;height:7px;border-radius:50%;background:{{ dmg_colors.get(dt,'#94a3b8') }}"></span>
+                {{ label }}
+              </span>
+              {% endfor %}
+            </div>
+          {% else %}
+          <div class="detail-value">—</div>
+          {% endif %}
+        </div>
+
+        <div class="col-6">
+          <div class="detail-label">Severity</div>
+          <span style="font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px;background:{{ sev_color }}18;color:{{ sev_color }};border:1px solid {{ sev_color }}35">
+            {{ report.severity | upper if report else '—' }}
+          </span>
+        </div>
+
+        <div class="col-6">
+          <div class="detail-label">Report Type</div>
+          <div class="detail-value">
+            {% if report %}
+              {{ '🤖 AI Detection' if report.report_type == 'ai' else '✍️ Manual' }}
+            {% else %}—{% endif %}
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="detail-label">Priority</div>
+          <span style="font-size:13px;font-weight:700;color:{{ priority_color }}">
+            {{ task.priority | title }}
+          </span>
+        </div>
+
+        <div class="col-6">
+          <div class="detail-label">Due Date</div>
+          <div class="detail-value">
+            {% if task.due_date %}
+              {{ task.due_date[:10] if task.due_date else 'Not set' }}
+            {% else %}Not set{% endif %}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="detail-label">Location</div>
+          <div class="detail-value" style="display:flex;align-items:flex-start;gap:6px">
+            <i class="bi bi-geo-alt text-danger" style="margin-top:2px;flex-shrink:0"></i>
+            <span>{{ report.location.address if report and report.location and report.location.address else 'Not specified' }}</span>
+          </div>
+        </div>
+
+        {% if report and report.description %}
+        <div class="col-12">
+          <div class="detail-label">Description</div>
+          <div style="background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:12px;font-size:13.5px;line-height:1.55;color:var(--rv-text)">
+            {{ report.description }}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if task.notes %}
+        <div class="col-12">
+          <div class="detail-label">Admin Notes</div>
+          <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--rv-radius-sm);padding:12px;font-size:13.5px;line-height:1.55">
+            <i class="bi bi-info-circle text-primary me-1"></i>{{ task.notes }}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Timestamps -->
+        <div class="col-12" style="border-top:1px solid var(--rv-border);padding-top:12px;margin-top:4px">
+          <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:11.5px;color:var(--rv-text-light)">
+            {% if fmt_created_at %}
+            <span><i class="bi bi-calendar me-1"></i>Assigned: {{ fmt_created_at }}</span>
+            {% endif %}
+            {% if fmt_started_at %}
+            <span><i class="bi bi-play-circle me-1"></i>Started: {{ fmt_started_at }}</span>
+            {% endif %}
+            {% if fmt_completed_at %}
+            <span><i class="bi bi-check-circle me-1"></i>Done: {{ fmt_completed_at }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assigned workers -->
+    <div class="detail-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="rv-card-title">
+          <i class="bi bi-people me-2 text-primary"></i>Assigned Workers
+        </div>
+        {% if task.status != 'completed' %}
+        <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="showAssignWorkersModal()">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
+        {% endif %}
+      </div>
+
+      {% if assigned_workers %}
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        {% for w in assigned_workers %}
+        <div class="worker-chip">
+          {% if w.photo_url %}
+          <img src="{{ w.photo_url }}" alt="{{ w.name }}"/>
+          {% else %}
+          <div class="av">{{ w.name[0].upper() }}</div>
+          {% endif %}
+          {{ w.name.split()[0] }}
+          <span style="font-size:10px;color:var(--rv-text-muted)">·</span>
+          <span style="font-size:10.5px;color:{{ '#059669' if w.status=='available' else ('#d97706' if w.status=='on_leave' else '#94a3b8') }}">
+            {{ w.status | replace('_',' ') | title }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:24px;color:var(--rv-text-muted);background:rgba(245,158,11,.05);border:1px dashed rgba(245,158,11,.3);border-radius:var(--rv-radius-sm)">
+        <i class="bi bi-person-exclamation" style="font-size:24px;color:#d97706;display:block;margin-bottom:8px"></i>
+        <div style="font-size:13px;margin-bottom:10px">No workers assigned yet.</div>
+        {% if task.status != 'completed' %}
+        <button class="rv-btn rv-btn-sm" style="background:rgba(245,158,11,.12);color:#d97706" onclick="showAssignWorkersModal()">
+          <i class="bi bi-people"></i> Assign Workers
+        </button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Before / After photos -->
+    <div class="detail-section">
+      <div class="rv-card-title mb-4">
+        <i class="bi bi-images me-2 text-primary"></i>Repair Photos
+      </div>
+      <div class="row g-3">
+
+        <!-- Before -->
+        <div class="col-6">
+          <div class="detail-label mb-2">Before Repair</div>
+          {% if task.before_image %}
+          <img src="{{ task.before_image }}" class="photo-thumb"
+              onclick="showImgModal('{{ task.before_image }}')"
+              style="cursor:zoom-in" alt="Before"/>
+          {% elif task.status == 'assigned' or task.status == 'in_progress' or task.status == 'completed' %}
+          <div class="photo-upload-box" onclick="document.getElementById('beforeImg').click()">
+            <i class="bi bi-camera" style="font-size:28px;color:var(--rv-text-light);display:block;margin-bottom:8px"></i>
+            <div style="font-size:12.5px;color:var(--rv-text-muted)">Upload before photo</div>
+            <div style="font-size:11px;color:var(--rv-text-light);margin-top:4px">JPG · PNG</div>
+          </div>
+          <input type="file" id="beforeImg" accept="image/*" style="display:none"
+                onchange="uploadRepairPhoto('before',this)"/>
+          {% else %}
+          <div class="photo-upload-box" style="cursor:not-allowed;opacity:.55">
+            <i class="bi bi-lock" style="font-size:28px;color:var(--rv-text-light);display:block;margin-bottom:8px"></i>
+            <div style="font-size:12.5px;color:var(--rv-text-muted)">Start work first</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- After -->
+        <div class="col-6">
+          <div class="detail-label mb-2">After Repair</div>
+          {% if task.after_image %}
+          <img src="{{ task.after_image }}" class="photo-thumb"
+              onclick="showImgModal('{{ task.after_image }}')"
+              style="cursor:zoom-in" alt="After"/>
+          {% elif task.status == 'in_progress' or task.status == 'completed' %}
+          <div class="photo-upload-box" onclick="document.getElementById('afterImg').click()">
+            <i class="bi bi-camera-fill" style="font-size:28px;color:var(--rv-text-light);display:block;margin-bottom:8px"></i>
+            <div style="font-size:12.5px;color:var(--rv-text-muted)">Upload after photo</div>
+            <div style="font-size:11px;color:var(--rv-text-light);margin-top:4px">JPG · PNG</div>
+          </div>
+          <input type="file" id="afterImg" accept="image/*" style="display:none"
+                onchange="uploadRepairPhoto('after',this)"/>
+          {% else %}
+          <div class="photo-upload-box" style="cursor:not-allowed;opacity:.55">
+            <i class="bi bi-lock" style="font-size:28px;color:var(--rv-text-light);display:block;margin-bottom:8px"></i>
+            <div style="font-size:12.5px;color:var(--rv-text-muted)">Start work first</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Upload progress -->
+        <div class="col-12" id="photoUploadProgress" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+            <span style="font-size:13px" id="photoProgressText">Uploading photo…</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT COLUMN ────────────────────────────────────────── -->
+  <div class="col-12 col-lg-5">
+
+    <!-- Site Map -->
+    <div class="detail-section d-none d-lg-block">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="rv-card-title">
+          <i class="bi bi-geo-alt me-2 text-danger"></i>Repair Site
+        </div>
+        {% if report and report.location and report.location.coordinates %}
+        <a href="https://www.google.com/maps?q={{ report.location.coordinates[1] }},{{ report.location.coordinates[0] }}"
+          target="_blank"
+          class="rv-btn rv-btn-secondary rv-btn-sm">
+          <i class="bi bi-navigation"></i> Navigate
+        </a>
+        {% endif %}
+      </div>
+      <div id="taskMap" class="rv-map" style="height:280px"></div>
+    </div>
+
+    <!-- Original damage image -->
+    {% if report and report.images %}
+    <div class="detail-section d-none d-lg-block">
+      <div class="rv-card-title mb-3">
+        <i class="bi bi-image me-2 text-primary"></i>Reported Damage Image
+      </div>
+      {% if report.images.annotated %}
+      <div>
+        <div class="detail-label mb-2">AI Annotated</div>
+        <img src="{{ report.images.annotated }}"
+             style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);cursor:zoom-in;max-height:240px;object-fit:contain;background:#000"
+             onclick="showImgModal('{{ report.images.annotated }}')" alt="Annotated"/>
+      </div>
+      {% if report.images.original and report.images.original != report.images.annotated %}
+      <div style="margin-top:12px">
+        <div class="detail-label mb-2">Original</div>
+        <img src="{{ report.images.original }}"
+             style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);cursor:zoom-in;max-height:160px;object-fit:cover"
+             onclick="showImgModal('{{ report.images.original }}')" alt="Original"/>
+      </div>
+      {% endif %}
+      {% elif report.images.original %}
+      <img src="{{ report.images.original }}"
+           style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);cursor:zoom-in"
+           onclick="showImgModal('{{ report.images.original }}')" alt="Report image"/>
+      {% endif %}
+
+      <!-- AI Detection summary -->
+      {% if report.ai_results and report.ai_results.get('detections') %}
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rv-border)">
+        <div class="detail-label mb-2">AI Detections ({{ report.ai_results.detections | length }})</div>
+        {% for det in report.ai_results.detections %}
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);margin-bottom:5px">
+          <div style="width:10px;height:10px;border-radius:2px;background:{{ dmg_colors.get(det.get('damage_type','other'),'#94a3b8') }};flex-shrink:0"></div>
+          <div style="flex:1;font-size:12.5px;font-weight:500">{{ det.display_name if det.display_name else damage_display.get(det.get('damage_type',''), det.get('damage_type','—')) }}</div>
+          <div style="font-size:12px;color:var(--rv-text-muted)">{{ (det.confidence * 100) | round | int }}%</div>
+          <div style="font-size:11.5px;font-weight:700;color:{{ sev_colors.get(det.get('severity','low'),'#94a3b8') }}">
+            {{ det.severity | upper if det.severity else '—' }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Team info -->
+    <div class="detail-section">
+      <div class="rv-card-title mb-3">
+        <i class="bi bi-cone-striped me-2" style="color:{{ team_cfg.get('color','#3b82f6') }}"></i>
+        Team Information
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px;background:{{ team_cfg.get('color','#3b82f6') }}10;border-radius:var(--rv-radius-sm);border:1px solid {{ team_cfg.get('color','#3b82f6') }}30">
+        <div style="width:44px;height:44px;border-radius:12px;background:{{ team_cfg.get('color','#3b82f6') }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0">
+          {{ team_key[0].upper() if team_key else 'T' }}
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700">{{ team_cfg.get('name','Your Team') }}</div>
+          <div style="font-size:12px;color:var(--rv-text-muted)">
+            Handles <strong>{{ team_cfg.get('severity','—') }}</strong> severity ·
+            Max {{ team_cfg.get('max_workers','—') }} workers
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Assign Workers Modal ─────────────────────────────────── -->
+<div class="modal fade" id="assignWorkersModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-people me-2 text-primary"></i>Assign Workers
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="assignWorkersErr" class="alert alert-danger d-none" style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+
+        <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:14px;padding:10px 12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+          <i class="bi bi-info-circle text-primary me-1"></i>
+          Select workers from your team (1 to {{ team_cfg.get('max_workers', 5) }}).
+          Only <strong style="color:#059669">available</strong> workers shown.
+        </div>
+
+        <div style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:7px" id="workerChecklist">
+          {% set avail_workers = available_workers | selectattr('status','equalto','available') | list %}
+          {% if avail_workers %}
+            {% for w in avail_workers %}
+            {% set is_assigned = w._id in (task.assigned_workers or []) %}
+            <label style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:{{ 'var(--rv-primary-glow)' if is_assigned else 'var(--rv-surface-2)' }};border:1.5px solid {{ 'var(--rv-primary-light)' if is_assigned else 'var(--rv-border)' }};border-radius:var(--rv-radius-sm);cursor:pointer;transition:all .15s" class="worker-cb-label">
+              <input type="checkbox" class="worker-cb" value="{{ w._id }}"
+                     {{ 'checked' if is_assigned else '' }}
+                     style="width:16px;height:16px;accent-color:var(--rv-primary-light);cursor:pointer;flex-shrink:0"/>
+              {% if w.photo_url %}
+              <img src="{{ w.photo_url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0" alt=""/>
+              {% else %}
+              <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--rv-primary),var(--rv-accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">
+                {{ w.name[0].upper() }}
+              </div>
+              {% endif %}
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:600">{{ w.name }}</div>
+                <div style="font-size:12px;color:var(--rv-text-muted)">{{ w.phone }}</div>
+              </div>
+              <span style="font-size:11px;background:rgba(16,185,129,.12);color:#059669;padding:2px 8px;border-radius:20px;font-weight:600;flex-shrink:0">
+                Available
+              </span>
+            </label>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:28px;color:var(--rv-text-muted)">
+            <i class="bi bi-person-slash" style="font-size:32px;display:block;margin-bottom:10px"></i>
+            No available workers.
+            <a href="{{ url_for('crew.workers') }}" style="color:var(--rv-primary-light)">Manage workers →</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div id="workerSelCount" style="font-size:12px;color:var(--rv-text-muted);text-align:center;margin-top:10px">
+          0 worker(s) selected
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="saveWorkersBtn" onclick="saveWorkerAssignment()">
+          <i class="bi bi-check-lg"></i> Save Assignment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Complete Confirm Modal ──────────────────────────────────── -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-check-circle me-2 text-success"></i>Confirm Completion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;margin-bottom:14px">
+          Confirm the repair is fully completed and the road is safe for use?
+        </p>
+        <div style="background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);padding:12px;font-size:13px;color:var(--rv-text-muted)">
+          <i class="bi bi-lightbulb text-warning me-2"></i>
+          Tip: Upload a clear <strong>after-repair photo</strong> before marking complete to help admins verify the work.
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-success" id="confirmCompleteBtn" onclick="doComplete()">
+          <i class="bi bi-check-circle-fill"></i> Yes, Mark Completed
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Image Lightbox Modal ────────────────────────────────────── -->
+<div class="modal fade" id="imgModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:#000;border:none">
+      <div class="modal-header" style="border:none;padding:8px 12px">
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0 0 12px">
+        <img id="lightboxImg"
+             style="width:100%;max-height:80vh;object-fit:contain;display:block" alt=""/>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TASK_ID   = '{{ task._id if task else "" }}';
+const MAX_CAP   = {{ team_cfg.get('max_workers', 5) }};
+const SEV_COLORS = {low:'#22c55e',medium:'#fbbf24',high:'#f97316',critical:'#ef4444'};
+
+// ─── Map ──────────────────────────────────────────────────────────────────────
+function initTaskMap() {
+  {% if report and report.location and report.location.coordinates %}
+  const lat = {{ report.location.coordinates[1] }};
+  const lng = {{ report.location.coordinates[0] }};
+  if (!lat || !lng) return;
+
+  const map = L.map('taskMap').setView([lat, lng], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              {attribution:'© OSM', maxZoom:19}).addTo(map);
+
+  const sevColor = SEV_COLORS['{{ report.severity if report else "low" }}'] || '#94a3b8';
+  L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="
+        width:38px;height:38px;border-radius:50%;
+        background:${sevColor};border:4px solid #fff;
+        box-shadow:0 4px 14px ${sevColor}80;
+        display:flex;align-items:center;justify-content:center;
+        font-size:18px">🔧</div>`,
+      iconSize: [38, 38], iconAnchor: [19, 19]
+    })
+  }).addTo(map).bindPopup(`
+    <div style="font-size:13px;min-width:160px">
+      <b>Repair Site</b><br>
+      <span style="color:${sevColor};font-weight:600">{{ report.severity | upper if report else '' }}</span><br>
+      <span style="font-size:11px;color:#64748b">{{ report.location.address if report and report.location and report.location.address else '' }}</span>
+    </div>`).openPopup();
+  {% endif %}
+}
+
+
+function initTaskMapMobile() {
+  const mobileEl = document.getElementById('taskMapMobile');
+  if (!mobileEl || window.innerWidth >= 992) return;  // only on mobile
+  {% if report and report.location and report.location.coordinates %}
+  const lat = {{ report.location.coordinates[1] }};
+  const lng = {{ report.location.coordinates[0] }};
+  if (!lat || !lng) return;
+  const map = L.map('taskMapMobile').setView([lat, lng], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              {attribution:'© OSM', maxZoom:19}).addTo(map);
+  const sevColor = SEV_COLORS['{{ report.severity if report else "low" }}'] || '#94a3b8';
+  L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:38px;height:38px;border-radius:50%;background:${sevColor};border:4px solid #fff;box-shadow:0 4px 14px ${sevColor}80;display:flex;align-items:center;justify-content:center;font-size:18px">🔧</div>`,
+      iconSize:[38,38], iconAnchor:[19,19]
+    })
+  }).addTo(map).bindPopup(`
+    <div style="font-size:13px;min-width:160px">
+      <b>Repair Site</b><br>
+      <span style="color:${sevColor};font-weight:600">{{ report.severity | upper if report else '' }}</span><br>
+      <span style="font-size:11px;color:#64748b">{{ report.location.address if report and report.location and report.location.address else '' }}</span>
+    </div>`).openPopup();
+  {% endif %}
+}
+setTimeout(initTaskMapMobile, 300);
+
+// ─── Status update ────────────────────────────────────────────────────────────
+async function updateStatus(taskId, status, btn) {
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating…';
+  try {
+    const r = await fetch(`/crew/api/task/${taskId}/status`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status})
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast(status === 'completed' ? 'Task marked complete!' : 'Work started!',
+                status === 'completed' ? 'success' : 'info');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(d.error || 'Failed to update status.', 'critical');
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  } catch(e) {
+    showToast('Network error.', 'critical');
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+}
+
+// ─── Complete flow ────────────────────────────────────────────────────────────
+function confirmComplete() {
+  new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+
+async function doComplete() {
+  const btn = document.getElementById('confirmCompleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Completing…';
+  bootstrap.Modal.getInstance(document.getElementById('completeModal')).hide();
+  await updateStatus(TASK_ID, 'completed', btn);
+}
+
+// ─── Upload repair photo ──────────────────────────────────────────────────────
+async function uploadRepairPhoto(type, input) {
+  if (!input.files[0]) return;
+  const prog = document.getElementById('photoUploadProgress');
+  const text = document.getElementById('photoProgressText');
+  prog.style.display = 'block';
+  text.textContent = `Uploading ${type} photo…`;
+  const fd = new FormData();
+  fd.append('image', input.files[0]);
+  fd.append('type', type);
+  try {
+    const r = await fetch(`/crew/api/task/${TASK_ID}/upload-image`,
+                          {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} photo uploaded!`, 'success');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(d.error || 'Upload failed.', 'critical');
+      prog.style.display = 'none';
+    }
+  } catch(e) {
+    showToast('Network error during upload.', 'critical');
+    prog.style.display = 'none';
+  }
+}
+
+// ─── Worker assignment ────────────────────────────────────────────────────────
+function showAssignWorkersModal() {
+  document.getElementById('assignWorkersErr').classList.add('d-none');
+  updateSelCount();
+  new bootstrap.Modal(document.getElementById('assignWorkersModal')).show();
+}
+
+function updateSelCount() {
+  const checked = document.querySelectorAll('.worker-cb:checked').length;
+  document.getElementById('workerSelCount').textContent = `${checked} worker(s) selected`;
+  // Enforce max cap
+  const all = document.querySelectorAll('.worker-cb');
+  all.forEach(cb => {
+    if (!cb.checked) cb.disabled = checked >= MAX_CAP;
+  });
+  // Style labels
+  document.querySelectorAll('.worker-cb-label').forEach(lbl => {
+    const cb = lbl.querySelector('.worker-cb');
+    lbl.style.borderColor = cb.checked ? 'var(--rv-primary-light)' : 'var(--rv-border)';
+    lbl.style.background  = cb.checked ? 'var(--rv-primary-glow)' : 'var(--rv-surface-2)';
+  });
+}
+
+// Attach change listeners
+document.querySelectorAll('.worker-cb').forEach(cb => {
+  cb.addEventListener('change', updateSelCount);
+});
+
+async function saveWorkerAssignment() {
+  const errEl    = document.getElementById('assignWorkersErr');
+  const workerIds = Array.from(document.querySelectorAll('.worker-cb:checked'))
+                         .map(cb => cb.value);
+  errEl.classList.add('d-none');
+
+  if (!workerIds.length) {
+    errEl.textContent = 'Select at least one worker.';
+    errEl.classList.remove('d-none'); return;
+  }
+  if (workerIds.length > MAX_CAP) {
+    errEl.textContent = `Maximum ${MAX_CAP} workers allowed for your team.`;
+    errEl.classList.remove('d-none'); return;
+  }
+
+  const btn = document.getElementById('saveWorkersBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+
+  try {
+    const r = await fetch(`/crew/api/task/${TASK_ID}/assign-workers`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({worker_ids: workerIds})
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('assignWorkersModal')).hide();
+      showToast(`${d.assigned_count} worker(s) assigned!`, 'success');
+      setTimeout(() => location.reload(), 900);
+    } else {
+      errEl.textContent = d.error || 'Assignment failed.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error.';
+    errEl.classList.remove('d-none');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Assignment';
+}
+
+// ─── Lightbox ──────────────────────────────────────────────────────────────────
+function showImgModal(src) {
+  document.getElementById('lightboxImg').src = src;
+  new bootstrap.Modal(document.getElementById('imgModal')).show();
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+setTimeout(initTaskMap, 250);
+document.addEventListener('themeChange', () => {
+  // invalidate any leaflet map if needed
+});
+</script>
+{% endblock %}

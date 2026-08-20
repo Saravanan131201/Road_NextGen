@@ -1,0 +1,677 @@
+{% extends "base.html" %}
+{% block title %}My Reports — Road NextGen{% endblock %}
+{% block page_title %}My Reports{% endblock %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/citizen_my_reports.css') }}">
+{% endblock %}
+
+
+{% block extra_css %}
+/* ── Base reset to prevent overflow ── */
+* { box-sizing: border-box; }
+
+/* ── Report Card ── */
+.report-card {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius);
+  overflow: hidden;
+  box-shadow: var(--rv-shadow);
+  transition: transform .18s, box-shadow .18s;
+  margin-bottom: 14px;
+  width: 100%;
+}
+.report-card:hover { transform: translateY(-2px); box-shadow: var(--rv-shadow-lg); }
+
+/* Desktop: side by side */
+.report-card-inner {
+  display: flex;
+  min-height: 130px;
+  width: 100%;
+}
+
+/* Image panel */
+.report-card-img-wrap {
+  width: 120px;
+  min-width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--rv-surface-2);
+  position: relative;
+}
+.report-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  display: block;
+  transition: transform .22s;
+}
+.report-card-img-wrap img:hover { transform: scale(1.04); }
+.report-card-img-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--rv-text-light);
+}
+
+/* Card body — key: min-width:0 + overflow:hidden to contain children */
+.report-card-body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Damage tags */
+.damage-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  margin-right: 4px;
+  margin-bottom: 3px;
+  flex-shrink: 0;
+}
+
+/* Address — wraps, never truncates */
+.report-address {
+  font-size: 12px;
+  color: var(--rv-text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+  width: 100%;
+}
+.report-address i { flex-shrink: 0; margin-top: 2px; font-size: 12px; }
+
+/* Right badges column */
+.report-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* ── Stepper ── */
+.stepper-wrap { width: 100%; overflow: hidden; }
+.stepper-dots { display: flex; align-items: center; width: 100%; }
+.stepper-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  border: 2px solid var(--rv-border);
+  background: var(--rv-surface-2);
+  color: var(--rv-text-light);
+}
+.stepper-dot.done   { background: #10b981; border-color: #10b981; color: #fff; font-size: 11px; }
+.stepper-dot.active { background: #3b82f6; border-color: #3b82f6; color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+.stepper-line       { flex: 1; height: 2px; background: var(--rv-border); min-width: 0; }
+.stepper-line.done  { background: #10b981; }
+
+.stepper-labels { display: flex; width: 100%; margin-top: 4px; }
+.stepper-label {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--rv-text-light);
+  min-width: 0;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.2;
+}
+.stepper-label.lbl-first  { text-align: left; }
+.stepper-label.lbl-last   { text-align: right; }
+.stepper-label.lbl-mid    { text-align: center; }
+.stepper-label.lbl-done   { color: #10b981; }
+.stepper-label.lbl-active { color: #3b82f6; font-weight: 700; }
+
+/* Rejected pill */
+.rejected-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.2);
+  border-radius: 20px;
+  font-size: 11.5px;
+  color: #dc2626;
+  font-weight: 600;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+/* Card footer */
+.card-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.card-meta {
+  font-size: 11px;
+  color: var(--rv-text-light);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+  margin-bottom: 16px;
+}
+.filter-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  margin-bottom: 10px;
+}
+.filter-scroll-wrap::-webkit-scrollbar { display: none; }
+.filter-scroll {
+  display: flex;
+  gap: 6px;
+  width: max-content;
+}
+.filter-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--rv-border);
+  background: none;
+  color: var(--rv-text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.filter-btn:hover        { border-color: var(--rv-primary); color: var(--rv-primary); }
+.filter-btn.active       { background: var(--rv-primary); color: #fff; border-color: var(--rv-primary); }
+.filter-btn.rejected-btn.active { background: var(--rv-danger); border-color: var(--rv-danger); color: #fff; }
+
+/* New report button — full width on mobile */
+.new-report-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ── Detail modal ── */
+.detail-modal-img {
+  width: 100%;
+  border-radius: var(--rv-radius-sm);
+  object-fit: contain;
+  background: #000;
+  max-height: 240px;
+}
+
+/* ── Desktop overrides (side-by-side card) ── */
+@media (min-width: 576px) {
+  .report-card-img-wrap { width: 130px; min-width: 130px; }
+  .new-report-btn { width: auto; }
+  .filter-bar-desktop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .filter-scroll-wrap { margin-bottom: 0; overflow-x: visible; }
+  .filter-scroll { width: auto; flex-wrap: wrap; }
+  .stepper-label { font-size: 9.5px; }
+  .damage-tag { font-size: 11.5px; }
+}
+
+/* ── Mobile: stack card vertically ── */
+@media (max-width: 575px) {
+  .report-card-inner { flex-direction: column; min-height: unset; }
+  .report-card-img-wrap {
+    width: 100%;
+    min-width: unset;
+    height: 160px;
+  }
+  .stepper-label {
+    font-size: 8px;
+    line-height: 1.2;
+  }
+  .report-card-img-placeholder { min-height: 160px; }
+  .report-card-body { padding: 10px 12px; gap: 7px; }
+  .report-badges { flex-direction: row; align-items: center; margin-left: 0; }
+  .modal-dialog { margin: 8px; }
+  .modal-body { padding: 14px !important; }
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Summary Stats ── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon primary"><i class="bi bi-file-earmark-text"></i></div>
+      <div><div class="rv-stat-value">{{ total }}</div><div class="rv-stat-label">Total Reports</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon warning"><i class="bi bi-hourglass-split"></i></div>
+      <div><div class="rv-stat-value">{{ reports | selectattr('status','in',['pending','verified']) | list | length }}</div><div class="rv-stat-label">Under Review</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon accent"><i class="bi bi-tools"></i></div>
+      <div><div class="rv-stat-value">{{ reports | selectattr('status','in',['assigned','in_progress']) | list | length }}</div><div class="rv-stat-label">In Progress</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon success"><i class="bi bi-check-circle"></i></div>
+      <div><div class="rv-stat-value">{{ reports | selectattr('status','equalto','completed') | list | length }}</div><div class="rv-stat-label">Completed</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filter Bar ── -->
+<div class="filter-bar">
+
+  <!-- Search input -->
+  <div style="position:relative;margin-bottom:10px">
+    <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:13px;pointer-events:none"></i>
+    <input type="text" id="searchInput" value="{{ current_search }}"
+           class="rv-form-control" style="padding-left:32px;padding-right:36px"
+           placeholder="Search by damage type, address or report ID…"
+           onkeydown="if(event.key==='Enter')doSearch()"/>
+    {% if current_search %}
+    <a href="?status={{ current_status }}&page=1"
+       style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:14px;line-height:1;text-decoration:none">
+      <i class="bi bi-x-lg"></i>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Status pills + New Report button -->
+  <div class="filter-bar-desktop">
+    <div class="filter-scroll-wrap">
+      <div class="filter-scroll">
+        <button class="filter-btn {{ 'active' if not current_status }}"      onclick="filterStatus('')">All</button>
+        <button class="filter-btn {{ 'active' if current_status=='pending' }}" onclick="filterStatus('pending')">Pending</button>
+        <button class="filter-btn {{ 'active' if current_status=='verified' }}" onclick="filterStatus('verified')">Verified</button>
+        <button class="filter-btn {{ 'active' if current_status in ['assigned','in_progress'] }}" onclick="filterStatus('assigned')">In Progress</button>
+        <button class="filter-btn {{ 'active' if current_status=='completed' }}" onclick="filterStatus('completed')">Completed</button>
+        <button class="filter-btn rejected-btn {{ 'active' if current_status=='rejected' }}" onclick="filterStatus('rejected')">Rejected</button>
+      </div>
+    </div>
+    <a href="{{ url_for('citizen.report') }}" class="rv-btn rv-btn-primary rv-btn-sm new-report-btn">
+      <i class="bi bi-plus-circle"></i> New Report
+    </a>
+  </div>
+
+</div>
+
+<!-- ── Report Cards ── -->
+{% if reports %}
+{% for r in reports %}
+{% set sev_colors = {'low':'#22c55e','medium':'#fbbf24','high':'#f97316','critical':'#ef4444'} %}
+{% set sev_color  = sev_colors.get(r.severity,'#94a3b8') %}
+{% set damage_types = r.damage_types if r.damage_types else [] %}
+{% set display_names = r.display_names if r.display_names else [] %}
+{% set dmg_colors = {'pothole':'#8b5cf6','alligator_cracking':'#ef4444','lateral_cracking':'#f97316','longitudinal_cracking':'#fbbf24','other':'#94a3b8'} %}
+
+<div class="report-card">
+  <div class="report-card-inner">
+
+    <!-- Image -->
+    {% set img_src = r.images.annotated if r.images and r.images.annotated else (r.images.original if r.images and r.images.original else '') %}
+    <div class="report-card-img-wrap">
+      {% if img_src %}
+      <img src="{{ img_src }}" alt="Report image" onclick="showDetail('{{ r._id }}')"/>
+      {% else %}
+      <div class="report-card-img-placeholder"><i class="bi bi-image"></i></div>
+      {% endif %}
+    </div>
+
+    <!-- Body -->
+    <div class="report-card-body">
+
+      <!-- Top: tags + badges -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;min-width:0">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;flex-wrap:wrap;margin-bottom:4px">
+          {% for i in range(damage_types|length) %}
+            {% set dt = damage_types[i] %}
+            {% set dc = dmg_colors.get(dt,'#94a3b8') %}
+            {% set label = display_names[i] if display_names|length > i else dt|replace('_',' ')|title %}
+            <span class="damage-tag" style="background:{{ dc }}18;color:{{ dc }};border:1px solid {{ dc }}40">
+              <span style="width:6px;height:6px;border-radius:50%;background:{{ dc }};flex-shrink:0"></span>
+                {{ label }}
+            </span>
+            {% endfor %}
+          </div>
+          <!-- Address: full wrap, no truncation -->
+          <div class="report-address">
+            <i class="bi bi-geo-alt" style="color:var(--rv-danger)"></i>
+            <span>{{ r.location.address if r.location and r.location.address else 'Location not set' }}</span>
+          </div>
+        </div>
+        <!-- Badges -->
+        <div class="report-badges">
+          <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:{{ sev_color }}18;color:{{ sev_color }};border:1px solid {{ sev_color }}40;white-space:nowrap">
+            {{ r.severity|upper }}
+          </span>
+          <span style="font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap;background:{{ 'rgba(59,130,246,.1)' if r.report_type=='ai' else 'rgba(168,85,247,.1)' }};color:{{ '#2563eb' if r.report_type=='ai' else '#7c3aed' }}">
+            {{ '🤖 AI' if r.report_type=='ai' else '✍️ Manual' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Description (2-line clamp) -->
+      {% if r.description %}
+      <div style="font-size:12px;color:var(--rv-text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;width:100%">
+        {{ r.description }}
+      </div>
+      {% endif %}
+
+      <!-- Status stepper -->
+      {% if r.status != 'rejected' %}
+      {% set steps       = ['pending','verified','assigned','in_progress','completed'] %}
+      {% set step_labels = ['Submitted','Verified','Assigned','In Progress','Done'] %}
+      {% set status_idx  = {'pending':0,'verified':1,'assigned':2,'in_progress':3,'completed':4} %}
+      {% set curr_idx    = status_idx.get(r.status, 0) %}
+
+      <div class="stepper-wrap">
+        <div class="stepper-dots">
+          {% for i in range(steps|length) %}
+            {% set is_done    = (i < curr_idx) or (r.status == 'completed') %}
+            {% set is_current = (i == curr_idx) and (r.status != 'completed') %}
+            <div class="stepper-dot {{ 'done' if is_done else ('active' if is_current else '') }}">
+              {% if is_done %}✓{% else %}{{ i + 1 }}{% endif %}
+            </div>
+            {% if not loop.last %}<div class="stepper-line {{ 'done' if is_done else '' }}"></div>{% endif %}
+          {% endfor %}
+        </div>
+        <div class="stepper-labels">
+          {% for i in range(steps|length) %}
+            {% set is_done    = (i < curr_idx) or (r.status == 'completed') %}
+            {% set is_current = (i == curr_idx) and (r.status != 'completed') %}
+            <div class="stepper-label {{ 'lbl-first' if loop.first else ('lbl-last' if loop.last else 'lbl-mid') }} {{ 'lbl-done' if is_done else ('lbl-active' if is_current else '') }}">
+              {% if i == 3 and r._worker_count %}
+                In Progress ({{ r._worker_count }} member{{ 's' if r._worker_count != 1 else '' }})
+              {% else %}
+                {{ step_labels[i] }}
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% else %}
+      <div class="rejected-pill">
+        <i class="bi bi-x-circle-fill"></i>Rejected
+        {% if r.rejection_reason %}<span style="font-weight:400;color:var(--rv-text-muted)"> — {{ r.rejection_reason }}</span>{% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Footer -->
+      <div class="card-footer-row">
+        <div class="card-meta">
+          <span><i class="bi bi-clock me-1"></i>{{ time_ago(r.created_at) if r.created_at else '—' }}</span>
+          <code style="font-size:10px;background:var(--rv-surface-2);padding:1px 5px;border-radius:4px">{{ r._id }}</code>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="showDetail('{{ r._id }}')">
+            <i class="bi bi-eye"></i> Details
+          </button>
+          <a href="{{ url_for('citizen.export_citizen_report_csv', report_id=r._id) }}"
+            class="rv-btn rv-btn-secondary rv-btn-sm"
+            title="Download report as CSV">
+            <i class="bi bi-download"></i>
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /body -->
+  </div><!-- /inner -->
+</div>
+{% endfor %}
+
+<!-- ── Pagination ── -->
+{% if total > 20 %}
+{% set total_pages = ((total / 20) | round(0,'ceil') | int) %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:12px">
+  <div style="font-size:13px;color:var(--rv-text-muted)">Page {{ page }} of {{ total_pages }}</div>
+  <div class="rv-pagination">
+    {% if page > 1 %}<a href="?page={{ page-1 }}&status={{ current_status }}" class="rv-page-btn"><i class="bi bi-chevron-left"></i></a>{% endif %}
+    {% for p in range([1,page-2]|max, [total_pages+1,page+3]|min) %}
+    <a href="?page={{ p }}&status={{ current_status }}" class="rv-page-btn {{ 'active' if p==page }}">{{ p }}</a>
+    {% endfor %}
+    {% if page < total_pages %}<a href="?page={{ page+1 }}&status={{ current_status }}" class="rv-page-btn"><i class="bi bi-chevron-right"></i></a>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div style="text-align:center;padding:80px 24px;color:var(--rv-text-muted)">
+  <i class="bi bi-file-earmark-plus" style="font-size:64px;display:block;margin-bottom:20px;color:var(--rv-text-light)"></i>
+  <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No reports yet</h3>
+  <p style="font-size:14px;margin-bottom:20px">Help make roads safer by reporting damage in your area.</p>
+  <a href="{{ url_for('citizen.report') }}" class="rv-btn rv-btn-primary"><i class="bi bi-camera"></i> Report Road Damage</a>
+</div>
+{% endif %}
+
+<!-- ── Detail Modal ── -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border);padding:14px 18px">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-file-earmark-text me-2 text-primary"></i>Report Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detailBody" style="padding:18px">
+        <div style="text-align:center;padding:40px"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const REPORTS_DATA = {{ reports | tojson }};
+
+const DAMAGE_DISPLAY_MAP = {
+  pothole:'Pothole', alligator_cracking:'Alligator Cracking',
+  lateral_cracking:'Lateral Cracking', longitudinal_cracking:'Longitudinal Cracking', other:'Other'
+};
+const DMG_COLORS = {
+  pothole:'#8b5cf6', alligator_cracking:'#ef4444',
+  lateral_cracking:'#f97316', longitudinal_cracking:'#fbbf24', other:'#94a3b8'
+};
+const SEV_COLORS   = { low:'#22c55e', medium:'#fbbf24', high:'#f97316', critical:'#ef4444' };
+const STATUS_STEPS  = ['pending','verified','assigned','in_progress','completed'];
+const STATUS_LABELS = ['Submitted','Verified','Assigned','In Progress','Done'];
+
+function doSearch() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('search', document.getElementById('searchInput').value.trim());
+  url.searchParams.set('page', '1');
+  window.location.href = url.toString();
+}
+
+function filterStatus(status) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('status', status);
+  url.searchParams.set('search', document.getElementById('searchInput')?.value.trim() || '');
+  url.searchParams.set('page', '1');
+  window.location.href = url.toString();
+}
+
+function showDetail(reportId) {
+  const r = REPORTS_DATA.find(x => x._id === reportId);
+  if (!r) return;
+
+  const modal  = new bootstrap.Modal(document.getElementById('detailModal'));
+  const body   = document.getElementById('detailBody');
+  const sevClr = SEV_COLORS[r.severity] || '#94a3b8';
+  const dmgTypes   = r.damage_types  || [];
+  const dmgLabels  = r.display_names || dmgTypes.map(dt => DAMAGE_DISPLAY_MAP[dt] || dt);
+
+  const imgAnnotated = r.images?.annotated     || '';
+  const imgOriginal  = r.images?.original      || '';
+  const imgBefore    = r.images?.repair_before || '';
+  const imgAfter     = r.images?.repair_after  || '';
+
+  /* Stepper */
+  const currIdx = STATUS_STEPS.indexOf(r.status);
+  const stepperHTML = r.status !== 'rejected' ? (() => {
+    const dots = STATUS_STEPS.map((s, i) => {
+      const isDone    = i < currIdx || r.status === 'completed';
+      const isCurrent = i === currIdx && r.status !== 'completed';
+      const bg     = isDone ? '#10b981' : isCurrent ? '#3b82f6' : 'var(--rv-surface-2)';
+      const border = isDone ? '#10b981' : isCurrent ? '#3b82f6' : 'var(--rv-border)';
+      const clr    = (isDone || isCurrent) ? '#fff' : 'var(--rv-text-light)';
+      const shadow = isCurrent ? 'box-shadow:0 0 0 3px rgba(59,130,246,.2);' : '';
+      const inner  = isDone ? `<i class="bi bi-check" style="font-size:11px;font-weight:900"></i>` : `${i+1}`;
+      const line   = i < STATUS_STEPS.length-1
+        ? `<div style="flex:1;min-width:0;height:2px;background:${isDone?'#10b981':'var(--rv-border)'}"></div>` : '';
+      return `<div style="width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:${bg};border:2px solid ${border};color:${clr};${shadow}">${inner}</div>${line}`;
+    }).join('');
+      const labels = STATUS_STEPS.map((s, i) => {
+      const isDone    = i < currIdx || r.status === 'completed';
+      const isCurrent = i === currIdx && r.status !== 'completed';
+      const align     = i === 0 ? 'left' : i === STATUS_STEPS.length - 1 ? 'right' : 'center';
+      const color     = isDone ? '#10b981' : isCurrent ? '#3b82f6' : 'var(--rv-text-light)';
+      const weight    = isCurrent ? 700 : 500;
+
+      const labelHTML = (i === 3 && r._worker_count)
+        ? `In Progress
+          <small style="display:block;font-size:8px;font-weight:600;line-height:1.2;">
+            ${r._worker_count} member${r._worker_count !== 1 ? 's' : ''}
+          </small>`
+        : STATUS_LABELS[i];
+
+      return `
+        <div style="flex:1; min-width:0; text-align:${align}; font-size:9.5px; font-weight:${weight}; color:${color};
+          line-height:1.2; overflow:visible; white-space:normal;">
+          ${labelHTML}
+        </div>`;
+    }).join('');
+    return `<div style="margin:10px 0 14px"><div style="display:flex;align-items:center">${dots}</div><div style="display:flex;margin-top:5px">${labels}</div></div>`;
+  })() : `<div style="color:#dc2626;font-weight:600;padding:8px 0;display:flex;align-items:center;gap:6px"><i class="bi bi-x-circle-fill"></i>Rejected${r.admin_notes?' — '+r.admin_notes:''}</div>`;
+
+  /* AI Detections */
+  const detectionsHTML = r.ai_results?.detections?.length ? `
+    <div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:7px;letter-spacing:.05em">AI DETECTIONS</div>
+      ${r.ai_results.detections.map(d=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);margin-bottom:5px">
+          <div style="width:9px;height:9px;border-radius:2px;background:${DMG_COLORS[d.damage_type]||'#94a3b8'};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.display_name||DAMAGE_DISPLAY_MAP[d.damage_type]||d.damage_type}</div>
+          <div style="font-size:11.5px;color:var(--rv-text-muted);flex-shrink:0">${(d.confidence*100).toFixed(0)}%</div>
+          <div style="font-size:11.5px;font-weight:700;color:${SEV_COLORS[d.severity]||'#94a3b8'};flex-shrink:0">${(d.severity||'').toUpperCase()}</div>
+        </div>`).join('')}
+    </div>` : '';
+
+  body.innerHTML = `
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:8px;letter-spacing:.05em">IMAGES</div>
+        ${imgAnnotated?`<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--rv-text-muted);margin-bottom:4px">AI Annotated</div><img src="${imgAnnotated}" class="detail-modal-img" alt="Annotated"/></div>`:''}
+        ${imgOriginal&&imgOriginal!==imgAnnotated?`<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--rv-text-muted);margin-bottom:4px">Original</div><img src="${imgOriginal}" class="detail-modal-img" style="max-height:150px" alt="Original"/></div>`:''}
+        ${(imgBefore||imgAfter)?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          ${imgBefore?`<div><div style="font-size:11px;color:var(--rv-text-muted);margin-bottom:4px">Before</div><img src="${imgBefore}" style="width:100%;border-radius:6px;object-fit:cover;max-height:100px" alt="Before"/></div>`:''}
+          ${imgAfter?`<div><div style="font-size:11px;color:var(--rv-text-muted);margin-bottom:4px">After</div><img src="${imgAfter}" style="width:100%;border-radius:6px;object-fit:cover;max-height:100px" alt="After"/></div>`:''}
+        </div>`:''}
+        ${!imgAnnotated&&!imgOriginal?`<div style="height:110px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);display:flex;align-items:center;justify-content:center;color:var(--rv-text-light);font-size:34px"><i class="bi bi-image"></i></div>`:''}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:6px;letter-spacing:.05em">DAMAGE TYPE(S)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${dmgTypes.map((dt,i)=>`
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:${DMG_COLORS[dt]||'#94a3b8'}18;color:${DMG_COLORS[dt]||'#94a3b8'};border:1px solid ${DMG_COLORS[dt]||'#94a3b8'}35">
+                <span style="width:7px;height:7px;border-radius:50%;background:${DMG_COLORS[dt]||'#94a3b8'};flex-shrink:0"></span>
+                ${dmgLabels[i]||dt}
+              </span>`).join('')}
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div style="padding:10px 12px;background:${sevClr}10;border:1px solid ${sevClr}30;border-radius:var(--rv-radius-sm)">
+            <div style="font-size:10px;color:var(--rv-text-muted);margin-bottom:2px">SEVERITY</div>
+            <div style="font-size:15px;font-weight:800;color:${sevClr}">${(r.severity||'').toUpperCase()}</div>
+          </div>
+          <div style="padding:10px 12px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm)">
+            <div style="font-size:10px;color:var(--rv-text-muted);margin-bottom:2px">TYPE</div>
+            <div style="font-size:13px;font-weight:700">${r.report_type==='ai'?'🤖 AI':'✍️ Manual'}</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:4px;letter-spacing:.05em">STATUS</div>
+        ${stepperHTML}
+
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:4px;letter-spacing:.05em">LOCATION</div>
+          <div style="font-size:13px;color:var(--rv-text);display:flex;align-items:flex-start;gap:6px;line-height:1.45;word-break:break-word">
+            <i class="bi bi-geo-alt text-danger" style="margin-top:2px;flex-shrink:0"></i>
+            <span>${r.location?.address||'Not specified'}</span>
+          </div>
+        </div>
+
+        ${r.description?`
+          <div style="margin-bottom:10px">
+            <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:4px;letter-spacing:.05em">DESCRIPTION</div>
+            <div style="font-size:13px;color:var(--rv-text);background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);padding:10px 12px;line-height:1.5">${r.description}</div>
+          </div>`:''}
+
+        <div style="font-size:11px;color:var(--rv-text-light);display:flex;flex-direction:column;gap:5px">
+          <span><i class="bi bi-calendar me-1"></i>Submitted: ${r._fmt_created_at||'—'}</span>
+          ${r._fmt_assigned_at?`<span><i class="bi bi-person-check me-1"></i>Assigned: ${r._fmt_assigned_at}</span>`:''}
+          ${r._fmt_due_date?`<span><i class="bi bi-calendar-event me-1"></i>Due: ${r._fmt_due_date.slice(0,10)}</span>`:''}
+          ${r._fmt_started_at?`<span><i class="bi bi-play-circle me-1"></i>Started: ${r._fmt_started_at}</span>`:''}
+          ${r._fmt_completed_at?`<span><i class="bi bi-check-circle me-1"></i>Completed: ${r._fmt_completed_at}</span>`:''}
+        </div>
+
+        ${detectionsHTML}
+      </div>
+    </div>`;
+
+  modal.show();
+}
+</script>
+{% endblock %}

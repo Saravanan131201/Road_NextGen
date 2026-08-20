@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Profile — Road NextGen{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+
+
+{% block profile_link %}<li><a class="dropdown-item" href="{{ url_for('citizen.profile') }}"><i class="bi bi-person me-2"></i>Profile</a></li>{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-md-4">
+    <div class="rv-card" style="text-align:center">
+      {% if user.avatar %}
+      <img src="{{ user.avatar }}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;border:3px solid var(--rv-primary-light)" alt=""/>
+      {% else %}
+      <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--rv-primary),var(--rv-accent));display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:700;color:#fff;margin:0 auto 16px">{{ (user.name or 'U')[0].upper() }}</div>
+      {% endif %}
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:4px">{{ user.name or 'Citizen' }}</h3>
+      <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:8px">{{ user.email or user.phone or '—' }}</div>
+      <span style="font-size:11px;background:rgba(6,182,212,.12);color:#0891b2;padding:3px 12px;border-radius:20px;font-weight:600">
+        <i class="bi bi-person-walking me-1"></i>Citizen
+      </span>
+      <div style="margin-top:20px;display:flex;gap:16px;justify-content:center">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace">{{ total_reports }}</div>
+          <div style="font-size:11px;color:var(--rv-text-muted)">Reports</div>
+        </div>
+        <div style="width:1px;background:var(--rv-border)"></div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace">
+            {{ (user.created_at[:10] if user.created_at else 'N/A') }}
+          </div>
+          <div style="font-size:11px;color:var(--rv-text-muted)">Joined</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-8">
+    <div class="rv-card mb-4">
+      <div class="rv-card-title mb-4"><i class="bi bi-sliders me-2 text-primary"></i>Preferences</div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600">Push Notifications</div>
+            <div style="font-size:12px;color:var(--rv-text-muted)">Receive alerts for nearby hazards</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="notifToggle" {{ 'checked' if user.settings and user.settings.notifications }} onchange="savePref('notifications',this.checked)" style="width:44px;height:22px;cursor:pointer"/>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600">Dark Mode</div>
+            <div style="font-size:12px;color:var(--rv-text-muted)">Switch between light and dark theme</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="darkToggle" {{ 'checked' if user.settings and user.settings.dark_mode }} onchange="toggleTheme()" style="width:44px;height:22px;cursor:pointer"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rv-card">
+      <div class="rv-card-title mb-4"><i class="bi bi-info-circle me-2 text-primary"></i>Account Information</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+          {% for label, value in [
+            ('Auth Provider', user.auth_provider),
+            ('Account Status', 'Active' if user.is_active else 'Inactive'),
+            ('Verified', 'Yes' if user.is_verified else 'No'),
+            ('Last Login', fmt_dt(user.last_login) if user.last_login else 'N/A')
+          ] %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--rv-border)">
+         
+          {% if label == 'Auth Provider' %}
+          <span style="font-size:13px;color:var(--rv-text-muted)">{{ label }}</span>
+
+            <span style="font-size:13px;font-weight:600">
+
+              {% set providers = value if value is iterable and value is not string else [value] %}
+
+              {% for p in providers %}
+                <i class="bi bi-{{ 
+                  'google' if p == 'google'
+                  else 'phone' if p == 'phone'
+                  else 'patch-check' if p == 'otp'
+                  else 'key'
+                }} me-1"></i>{{ p | title }}{% if not loop.last %} + {% endif %}
+              {% endfor %}
+
+            </span>
+
+          {% else %}
+
+          <span style="font-size:13px;color:var(--rv-text-muted)">{{ label }}</span>
+          <span style="font-size:13px;font-weight:600">{{ value }}</span>
+
+          {% endif %}
+
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--rv-border)">
+        <a href="{{ url_for('auth.logout') }}" class="rv-btn rv-btn-danger rv-btn-sm"><i class="bi bi-box-arrow-left"></i> Sign Out</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function savePref(key, val) {
+  const settings = { [key]: val };
+  await fetch('/api/user/settings', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(settings)
+  });
+  showToast('Preference saved.','success');
+}
+</script>
+{% endblock %}

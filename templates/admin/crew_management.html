@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+{% block title %}Crew Teams Management — Road NextGen{% endblock %}
+{% block page_title %}Crew Teams Management{% endblock %}
+
+
+
+{% block extra_css %}
+.team-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius);overflow:hidden;box-shadow:var(--rv-shadow);transition:transform .2s,box-shadow .2s}
+.team-card:hover{transform:translateY(-2px);box-shadow:var(--rv-shadow-lg)}
+.team-header{padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
+.team-badge{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0}
+.team-body{padding:16px 20px;border-top:1px solid var(--rv-border)}
+.team-head-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff}
+.capacity-bar{height:8px;background:var(--rv-border);border-radius:4px;overflow:hidden;margin:8px 0}
+.capacity-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.head-card{display:flex;align-items:center;gap:12px;padding:12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);margin-bottom:10px}
+.worker-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);margin-bottom:6px}
+.worker-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--rv-border);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--rv-text-muted);flex-shrink:0}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-available{background:#10b981}
+.status-on_leave{background:#f59e0b}
+.status-inactive{background:#94a3b8}
+
+.star-rating{display:flex;gap:2px;align-items:center}
+.star-filled{color:#f59e0b;font-size:13px}
+.star-empty{color:var(--rv-border);font-size:13px}
+.perf-strip{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;padding:10px 12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border)}
+.perf-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:56px}
+.perf-val{font-size:15px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.perf-lbl{font-size:10px;color:var(--rv-text-muted);text-align:center;margin-top:2px;line-height:1.2}
+
+.photo-upload-box{border:2px dashed var(--rv-border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--rv-surface-2);position:relative;overflow:hidden}
+.photo-upload-box:hover{border-color:var(--rv-primary);background:rgba(var(--rv-primary-rgb),.04)}
+.photo-upload-box.has-photo{border-style:solid;border-color:var(--rv-primary)}
+.photo-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--rv-primary);margin:0 auto 8px;display:block}
+.photo-upload-hint{font-size:12px;color:var(--rv-text-muted)}
+
+
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+  <div>
+    <p style="font-size:14px;color:var(--rv-text-muted)">Manage team heads and view worker rosters across all teams.</p>
+  </div>
+  <button class="rv-btn rv-btn-primary" onclick="showAddHeadModal()">
+    <i class="bi bi-person-plus"></i> Add Team Head
+  </button>
+</div>
+
+<!-- Team Summary Stats -->
+<div class="row g-3 mb-4">
+  {% for team_key, team_cfg in teams.items() %}
+  {% set count = team_counts.get(team_key, 0) %}
+  {% set pct = ((count / team_cfg.max_workers) * 100) | round | int %}
+  <div class="col-6 col-lg-3">
+    <div class="rv-stat-card" style="cursor:pointer" onclick="scrollToTeam('{{ team_key }}')">
+      <div class="rv-stat-icon" style="background:{{ team_cfg.color }}22;color:{{ team_cfg.color }}">
+        <i class="bi bi-people"></i>
+      </div>
+      <div style="flex:1">
+        <div class="rv-stat-value">{{ count }}<span style="font-size:14px;color:var(--rv-text-muted)">/{{ team_cfg.max_workers }}</span></div>
+        <div class="rv-stat-label">{{ team_cfg.name }}</div>
+        <div class="capacity-bar"><div class="capacity-fill" style="width:{{ pct }}%;background:{{ team_cfg.color }}"></div></div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Team Cards Grid -->
+<div class="row g-4">
+  {% for team_key, team_cfg in teams.items() %}
+  {% set head = team_heads | selectattr('team', 'equalto', team_key) | list | first %}
+  {% set team_workers = all_workers | selectattr('team', 'equalto', team_key) | list %}
+  {% set count = team_workers | length %}
+  {% set pct = ((count / team_cfg.max_workers) * 100) | round | int %}
+
+  {# ── Compute per-team task stats passed from route ── #}
+  {% set t_stats = team_stats.get(team_key, {}) %}
+  {% set total_t = t_stats.get('total', 0) %}
+  {% set on_time = t_stats.get('on_time', 0) %}
+  {% set late    = t_stats.get('late', 0) %}
+  {% set overdue = t_stats.get('overdue', 0) %}
+  {% set rate    = t_stats.get('rate', 0) %}
+  {% set stars   = t_stats.get('stars', 0) %}
+
+  <div class="col-12 col-lg-6" id="team-{{ team_key }}">
+    <div class="team-card">
+      <!-- Team Header -->
+      <div class="team-header" style="background:{{ team_cfg.color }}0f">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="team-badge" style="background:{{ team_cfg.color }}">{{ team_key[0].upper() }}</div>
+          <div>
+            <div style="font-size:16px;font-weight:700">{{ team_cfg.name }}</div>
+            <div style="font-size:12px;color:var(--rv-text-muted)">
+              Handles <strong>{{ team_cfg.severity }}</strong> severity — max {{ team_cfg.max_workers }} workers
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ team_cfg.color }}">{{ count }}/{{ team_cfg.max_workers }}</div>
+          <div style="font-size:11px;color:var(--rv-text-muted)">Workers</div>
+          <!-- Download button -->
+          <a href="/admin/api/teams/{{ team_key }}/export/csv"
+             class="rv-btn rv-btn-sm rv-btn-secondary"
+             style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px"
+             title="Download task history for {{ team_cfg.name }}">
+            <i class="bi bi-download"></i> Task History
+          </a>
+        </div>
+      </div>
+
+      <div class="team-body">
+        <!-- Capacity Bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--rv-text-muted);margin-bottom:4px">
+          <span>Team Capacity</span><span>{{ pct }}%</span>
+        </div>
+        <div class="capacity-bar" style="margin-bottom:12px">
+          <div class="capacity-fill" style="width:{{ pct }}%;background:{{ '#ef4444' if pct >= 90 else ('#f59e0b' if pct >= 70 else team_cfg.color) }}"></div>
+        </div>
+
+        <!-- ── Performance Strip ── -->
+        {% if total_t > 0 %}
+        <div class="perf-strip">
+          <div class="perf-item">
+            <div class="perf-val" style="color:var(--rv-text)">{{ total_t }}</div>
+            <div class="perf-lbl">Total Tasks</div>
+          </div>
+          <div class="perf-item">
+            <div class="perf-val" style="color:#10b981">{{ on_time }}</div>
+            <div class="perf-lbl">On Time</div>
+          </div>
+          <div class="perf-item">
+            <div class="perf-val" style="color:#f59e0b">{{ late }}</div>
+            <div class="perf-lbl">Late</div>
+          </div>
+          <div class="perf-item">
+            <div class="perf-val" style="color:#ef4444">{{ overdue }}</div>
+            <div class="perf-lbl">Overdue</div>
+          </div>
+          <div class="perf-item" style="border-left:1px solid var(--rv-border);padding-left:8px">
+            <div class="perf-val" style="color:{{ team_cfg.color }}">{{ rate }}%</div>
+            <div class="perf-lbl">On-Time Rate</div>
+          </div>
+          <div class="perf-item">
+            <!-- Stars -->
+            <div class="star-rating">
+              {% for s in range(5) %}
+                {% if s < stars %}
+                <i class="bi bi-star-fill star-filled"></i>
+                {% else %}
+                <i class="bi bi-star star-empty"></i>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <div class="perf-lbl">Performance</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="padding:8px 12px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);font-size:12px;color:var(--rv-text-muted);margin-bottom:12px">
+          <i class="bi bi-clipboard2 me-1"></i>No tasks assigned yet — performance data will appear here.
+        </div>
+        {% endif %}
+
+        <!-- Team Head -->
+        <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Team Head</div>
+        {% if head %}
+        <div class="head-card">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,{{ team_cfg.color }},var(--rv-accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">
+            {% if head.avatar %}
+               <img src="{{ head.avatar }}" class = "team-head-avatar" alt="" style="background:var(--rv-border)"/>
+            {% else %}
+              {{ head.name[0].upper() }}
+            {% endif %}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600">{{ head.name }}</div>
+            <div style="font-size:11.5px;color:var(--rv-text-muted)">{{ head.email }}</div>
+            <div style="font-size:11px;color:var(--rv-text-light)">{{ head.phone }}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="rv-btn rv-btn-secondary rv-btn-sm rv-btn-icon"
+                    onclick="showEditHeadModal('{{ head._id }}','{{ head.name }}','{{ head.email }}','{{ head.phone }}','{{ head.avatar or '' }}')"
+                    title="Edit Team Head"><i class="bi bi-pencil"></i></button>
+            <button class="rv-btn rv-btn-secondary rv-btn-sm rv-btn-icon"
+                    onclick="showResetPwModal('{{ head._id }}','{{ head.name }}')"
+                    title="Reset Password"><i class="bi bi-key"></i></button>
+            <button class="rv-btn rv-btn-sm" style="background:rgba(245,158,11,.1);color:#d97706;padding:6px"
+                    onclick="showDeactivateHeadModal('{{ head._id }}','{{ head.name }}')"
+                    title="Deactivate Account"><i class="bi bi-person-dash"></i></button>
+          </div>
+        </div>
+        {% else %}
+        <div style="padding:14px;background:rgba(245,158,11,.06);border:1px dashed rgba(245,158,11,.3);border-radius:var(--rv-radius-sm);text-align:center;margin-bottom:12px">
+          <i class="bi bi-person-exclamation" style="font-size:20px;color:#d97706;display:block;margin-bottom:6px"></i>
+          <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:8px">No team head assigned</div>
+          <button class="rv-btn rv-btn-sm rv-btn-primary" onclick="showAddHeadModal('{{ team_key }}')">
+            <i class="bi bi-person-plus"></i> Assign Team Head
+          </button>
+        </div>
+        {% endif %}
+
+        <!-- Workers List -->
+        <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);letter-spacing:.05em;text-transform:uppercase;margin:14px 0 8px">
+          Workers ({{ count }}/{{ team_cfg.max_workers }})
+        </div>
+
+        {% if team_workers %}
+        <div style="max-height:260px;overflow-y:auto;padding-right:4px">
+          {% for w in team_workers %}
+          <div class="worker-row">
+            {% if w.photo_url %}
+            <img src="{{ w.photo_url }}" class="worker-avatar" alt=""/>
+            {% else %}
+            <div class="worker-avatar">{{ w.name[0].upper() }}</div>
+            {% endif %}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">{{ w.name }}</div>
+              <div style="font-size:11px;color:var(--rv-text-muted)">{{ w.phone }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="status-dot status-{{ w.status }}"></span>
+              <span style="font-size:11px;color:var(--rv-text-muted);text-transform:capitalize">{{ w.status | replace('_',' ') }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:var(--rv-text-muted);font-size:13px">
+          <i class="bi bi-people" style="font-size:24px;display:block;margin-bottom:8px;color:var(--rv-text-light)"></i>
+          No workers yet. The team head can add workers after logging in.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Add Team Head Modal ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="addHeadModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-person-plus me-2 text-primary"></i>Add Team Head
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="headModalErr" class="alert alert-danger d-none"
+             style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+
+        <!-- Photo Upload -->
+        <div class="mb-3">
+          <label class="rv-form-label">Profile Photo <span style="color:#ef4444">*</span></label>
+          <div class="photo-upload-box" id="headPhotoBox"
+               onclick="document.getElementById('headPhotoInput').click()">
+            <img id="headPhotoPreview" class="photo-preview d-none" src="" alt="Preview"/>
+            <div id="headPhotoPlaceholder">
+              <i class="bi bi-person-circle"
+                 style="font-size:36px;color:var(--rv-text-light);display:block;margin-bottom:6px"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--rv-text-muted)">Click to upload photo</div>
+              <div class="photo-upload-hint">JPG, PNG or WEBP · Max 2 MB</div>
+            </div>
+          </div>
+          <input type="file" id="headPhotoInput" accept="image/*" style="display:none"
+                 onchange="handleHeadPhotoSelect(event)"/>
+          <div id="headPhotoErr" style="font-size:12px;color:#ef4444;margin-top:4px;display:none">
+            Profile photo is required.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="rv-form-label">Full Name <span style="color:#ef4444">*</span></label>
+          <input type="text" id="headName" class="rv-form-control" placeholder="e.g. Ravi Kumar"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Email Address <span style="color:#ef4444">*</span></label>
+          <input type="email" id="headEmail" class="rv-form-control"
+                 placeholder="ravi@municipality.gov"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Phone Number <span style="color:#ef4444">*</span></label>
+          <input type="tel" id="headPhone" class="rv-form-control"
+                 placeholder="+91 9876543210"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Assign to Team <span style="color:#ef4444">*</span></label>
+          <select id="headTeam" class="rv-form-control">
+            <option value="">Select team…</option>
+            {% for k, v in teams.items() %}
+            <option value="{{ k }}">{{ v.name }} (max {{ v.max_workers }} workers)</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-1">
+          <label class="rv-form-label">Password <span style="color:#ef4444">*</span>
+            <span style="font-weight:400;color:var(--rv-text-muted)">(min. 8 characters)</span>
+          </label>
+          <div style="position:relative">
+            <input type="password" id="headPw" class="rv-form-control"
+                   style="padding-right:42px" placeholder="Create login password"/>
+            <button type="button" onclick="togglePw('headPw','headPwEye')"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--rv-text-muted);cursor:pointer">
+              <i class="bi bi-eye" id="headPwEye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="headSaveBtn" onclick="saveTeamHead()">
+          <i class="bi bi-check-lg"></i> Create Team Head
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reset Password Modal ───────────────────────────────────────────────── -->
+<div class="modal fade" id="resetPwModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:14px;font-weight:700">Reset Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="resetHeadId"/>
+        <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:12px">Resetting password for: <strong id="resetHeadName"></strong></div>
+        <label class="rv-form-label">New Password</label>
+        <input type="password" id="resetPw" class="rv-form-control" placeholder="Min. 8 characters"/>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary rv-btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary rv-btn-sm" onclick="doResetPw()"><i class="bi bi-key"></i> Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Edit Team Head Modal ───────────────────────────────────────────────── -->
+<div class="modal fade" id="editHeadModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-pencil me-2 text-primary"></i>Edit Team Head
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editHeadId"/>
+        <div id="editHeadModalErr" class="alert alert-danger d-none"
+             style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+
+        <!-- Photo Upload -->
+        <div class="mb-3">
+          <label class="rv-form-label">Profile Photo</label>
+          <div class="photo-upload-box" id="editHeadPhotoBox"
+               onclick="document.getElementById('editHeadPhotoInput').click()">
+            <img id="editHeadPhotoPreview" class="photo-preview d-none" src="" alt="Preview"/>
+            <div id="editHeadPhotoPlaceholder">
+              <i class="bi bi-person-circle"
+                 style="font-size:36px;color:var(--rv-text-light);display:block;margin-bottom:6px"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--rv-text-muted)">Click to change photo</div>
+              <div class="photo-upload-hint">JPG, PNG or WEBP · Max 2 MB · Leave unchanged to keep current</div>
+            </div>
+          </div>
+          <input type="file" id="editHeadPhotoInput" accept="image/*" style="display:none"
+                 onchange="handleEditHeadPhotoSelect(event)"/>
+        </div>
+
+        <div class="mb-3">
+          <label class="rv-form-label">Full Name <span style="color:#ef4444">*</span></label>
+          <input type="text" id="editHeadName" class="rv-form-control" placeholder="e.g. Ravi Kumar"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Email Address <span style="color:#ef4444">*</span></label>
+          <input type="email" id="editHeadEmail" class="rv-form-control" placeholder="ravi@municipality.gov"/>
+        </div>
+        <div class="mb-3">
+          <label class="rv-form-label">Phone Number <span style="color:#ef4444">*</span></label>
+          <input type="tel" id="editHeadPhone" class="rv-form-control" placeholder="+91 9876543210"/>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="editHeadSaveBtn" onclick="saveEditHead()">
+          <i class="bi bi-check-lg"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Deactivate Team Head Modal ─────────────────────────────────────────── -->
+<div class="modal fade" id="deactivateHeadModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:14px;font-weight:700">
+          <i class="bi bi-person-dash me-2" style="color:#f59e0b"></i>Deactivate Account
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="deactivateHeadId"/>
+
+        <div style="text-align:center;padding:8px 0 16px">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+            <i class="bi bi-person-dash" style="font-size:24px;color:#d97706"></i>
+          </div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px">
+            Deactivate <span id="deactivateHeadName" style="color:#d97706"></span>?
+          </div>
+          <div style="font-size:12.5px;color:var(--rv-text-muted);line-height:1.55">
+            This will prevent them from logging in. Their team assignment and
+            task history are preserved and the account can be reactivated later.
+          </div>
+        </div>
+
+        <!-- Reason dropdown -->
+        <div class="mb-3">
+          <label class="rv-form-label">Reason <span style="color:#ef4444">*</span></label>
+          <select id="deactivateReason" class="rv-form-control">
+            <option value="">Select a reason…</option>
+            <option value="on_leave">On Leave</option>
+            <option value="suspended">Suspended</option>
+            <option value="reassignment">Pending Reassignment</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="mb-1">
+          <label class="rv-form-label">Notes <span style="font-weight:400;color:var(--rv-text-muted)">(optional)</span></label>
+          <textarea id="deactivateNote" class="rv-form-control" rows="2"
+                    placeholder="Any additional context…"
+                    style="resize:vertical;min-height:56px"></textarea>
+        </div>
+
+        <div id="deactivateErr" class="alert alert-danger d-none mt-3"
+             style="font-size:12.5px;border-radius:8px;padding:9px 13px;margin-bottom:0"></div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary rv-btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-sm" id="deactivateConfirmBtn"
+                style="background:rgba(245,158,11,.15);color:#d97706;border:1px solid rgba(245,158,11,.3)"
+                onclick="doDeactivateHead()">
+          <i class="bi bi-person-dash"></i> Deactivate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function scrollToTeam(key) {
+  document.getElementById(`team-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function togglePw(inputId, iconId) {
+  const el = document.getElementById(inputId);
+  const ic = document.getElementById(iconId);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  ic.className = el.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+/* ── Head photo handling ─────────────────────────────── */
+let _headPhotoB64 = '';
+
+function handleHeadPhotoSelect(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Photo must be under 2 MB.', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _headPhotoB64 = e.target.result;
+    const preview = document.getElementById('headPhotoPreview');
+    const placeholder = document.getElementById('headPhotoPlaceholder');
+    preview.src = _headPhotoB64;
+    preview.classList.remove('d-none');
+    placeholder.style.display = 'none';
+    document.getElementById('headPhotoBox').classList.add('has-photo');
+    document.getElementById('headPhotoErr').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Show Add Head modal ─────────────────────────────── */
+function showAddHeadModal(preselect = '') {
+  _headPhotoB64 = '';
+  document.getElementById('headModalErr').classList.add('d-none');
+  document.getElementById('headPhotoErr').style.display = 'none';
+  document.getElementById('headPhotoPreview').classList.add('d-none');
+  document.getElementById('headPhotoPlaceholder').style.display = '';
+  document.getElementById('headPhotoBox').classList.remove('has-photo');
+  document.getElementById('headPhotoInput').value = '';
+  ['headName', 'headEmail', 'headPhone', 'headPw'].forEach(id =>
+    document.getElementById(id).value = '');
+  if (preselect) document.getElementById('headTeam').value = preselect;
+  new bootstrap.Modal(document.getElementById('addHeadModal')).show();
+}
+
+/* ── Save team head ──────────────────────────────────── */
+async function saveTeamHead() {
+  const errEl = document.getElementById('headModalErr');
+  errEl.classList.add('d-none');
+
+  // Validate photo first
+  if (!_headPhotoB64) {
+    document.getElementById('headPhotoErr').style.display = 'block';
+    document.getElementById('headPhotoBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const btn = document.getElementById('headSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating…';
+
+  const payload = {
+    name:      document.getElementById('headName').value.trim(),
+    email:     document.getElementById('headEmail').value.trim(),
+    phone:     document.getElementById('headPhone').value.trim(),
+    team:      document.getElementById('headTeam').value,
+    password:  document.getElementById('headPw').value,
+    photo_b64: _headPhotoB64,
+  };
+
+  try {
+    const r = await fetch('/admin/api/team-heads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addHeadModal')).hide();
+      showToast('Team head created successfully!', 'success', 'Account Created');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      errEl.textContent = d.error || 'Failed to create team head.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.remove('d-none');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg"></i> Create Team Head';
+}
+
+/* ── Reset password ──────────────────────────────────── */
+function showResetPwModal(id, name) {
+  document.getElementById('resetHeadId').value = id;
+  document.getElementById('resetHeadName').textContent = name;
+  document.getElementById('resetPw').value = '';
+  new bootstrap.Modal(document.getElementById('resetPwModal')).show();
+}
+
+async function doResetPw() {
+  const id = document.getElementById('resetHeadId').value;
+  const pw = document.getElementById('resetPw').value;
+  if (pw.length < 8) { showToast('Password must be at least 8 characters.', 'warning'); return; }
+  const r = await fetch(`/admin/api/team-heads/${id}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw })
+  });
+  const d = await r.json();
+  if (d.success) {
+    bootstrap.Modal.getInstance(document.getElementById('resetPwModal')).hide();
+    showToast('Password reset successfully.', 'success');
+  } else {
+    showToast(d.error || 'Failed.', 'critical');
+  }
+}
+
+
+/* ── Edit Head photo handling ────────────────────────────── */
+let _editHeadPhotoB64 = '';
+
+function handleEditHeadPhotoSelect(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Photo must be under 2 MB.', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _editHeadPhotoB64 = e.target.result;
+    const preview     = document.getElementById('editHeadPhotoPreview');
+    const placeholder = document.getElementById('editHeadPhotoPlaceholder');
+    preview.src = _editHeadPhotoB64;
+    preview.classList.remove('d-none');
+    placeholder.style.display = 'none';
+    document.getElementById('editHeadPhotoBox').classList.add('has-photo');
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Show Edit Head modal ────────────────────────────────── */
+function showEditHeadModal(id, name, email, phone, avatarUrl) {
+  _editHeadPhotoB64 = '';
+  document.getElementById('editHeadId').value      = id;
+  document.getElementById('editHeadName').value    = name;
+  document.getElementById('editHeadEmail').value   = email;
+  document.getElementById('editHeadPhone').value   = phone;
+  document.getElementById('editHeadModalErr').classList.add('d-none');
+  document.getElementById('editHeadPhotoInput').value = '';
+
+  const preview     = document.getElementById('editHeadPhotoPreview');
+  const placeholder = document.getElementById('editHeadPhotoPlaceholder');
+  const box         = document.getElementById('editHeadPhotoBox');
+
+  if (avatarUrl) {
+    preview.src = avatarUrl;
+    preview.classList.remove('d-none');
+    placeholder.style.display = 'none';
+    box.classList.add('has-photo');
+  } else {
+    preview.classList.add('d-none');
+    placeholder.style.display = '';
+    box.classList.remove('has-photo');
+  }
+
+  new bootstrap.Modal(document.getElementById('editHeadModal')).show();
+}
+
+/* ── Save edits ──────────────────────────────────────────── */
+async function saveEditHead() {
+  const errEl = document.getElementById('editHeadModalErr');
+  errEl.classList.add('d-none');
+
+  const id    = document.getElementById('editHeadId').value;
+  const name  = document.getElementById('editHeadName').value.trim();
+  const email = document.getElementById('editHeadEmail').value.trim();
+  const phone = document.getElementById('editHeadPhone').value.trim();
+
+  if (!name || !email || !phone) {
+    errEl.textContent = 'Name, email and phone are required.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  const btn = document.getElementById('editHeadSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+
+  const payload = { name, email, phone };
+  // Only include photo if user selected a new one
+  if (_editHeadPhotoB64) payload.photo_b64 = _editHeadPhotoB64;
+
+  try {
+    const r = await fetch(`/admin/api/team-heads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('editHeadModal')).hide();
+      showToast('Team head updated successfully!', 'success', 'Changes Saved');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      errEl.textContent = d.error || 'Failed to update team head.';
+      errEl.classList.remove('d-none');
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.remove('d-none');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+}
+
+
+
+/* ── Deactivate team head ────────────────────────────── */
+function showDeactivateHeadModal(id, name) {
+  document.getElementById('deactivateHeadId').value = id;
+  document.getElementById('deactivateHeadName').textContent = name;
+  document.getElementById('deactivateReason').value = '';
+  document.getElementById('deactivateNote').value = '';
+  document.getElementById('deactivateErr').classList.add('d-none');
+  const btn = document.getElementById('deactivateConfirmBtn');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-person-dash"></i> Deactivate';
+  new bootstrap.Modal(document.getElementById('deactivateHeadModal')).show();
+}
+
+async function doDeactivateHead() {
+  const errEl  = document.getElementById('deactivateErr');
+  const reason = document.getElementById('deactivateReason').value;
+  errEl.classList.add('d-none');
+
+  if (!reason) {
+    errEl.textContent = 'Please select a reason before deactivating.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  const id   = document.getElementById('deactivateHeadId').value;
+  const note = document.getElementById('deactivateNote').value.trim();
+  const btn  = document.getElementById('deactivateConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deactivating…';
+
+  try {
+    const r = await fetch(`/admin/api/team-heads/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, note })
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('deactivateHeadModal')).hide();
+      showToast('Account deactivated. The team head can no longer log in.', 'warning', 'Account Deactivated');
+      setTimeout(() => location.reload(), 1400);
+    } else {
+      errEl.textContent = d.error || 'Failed to deactivate account.';
+      errEl.classList.remove('d-none');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-person-dash"></i> Deactivate';
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.remove('d-none');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-person-dash"></i> Deactivate';
+  }
+}
+
+
+</script>
+{% endblock %}

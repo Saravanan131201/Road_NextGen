@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — Road NextGen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <style>
+    /* ─── Tokens ─── */
+    :root {
+      --primary:#1e40af; --primary-l:#3b82f6; --accent:#06b6d4;
+      --bg:#f0f4f8; --surface:#fff; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b; --light:#94a3b8;
+      --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+      --radius:12px; --radius-sm:8px;
+    }
+    [data-theme="dark"]{
+      --bg:#080f1a; --surface:#0f1927; --border:#1e3048;
+      --text:#f0f6ff; --muted:#7fa8c9; --light:#4a7a9b;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+
+    /* ─── Two-column layout ─── */
+    .login-grid{display:grid;grid-template-columns:1fr 1fr;width:100%;min-height:100vh}
+
+    /* ─── Hero (left) ─── */
+    .hero{
+      background:linear-gradient(145deg,#0f2569 0%,#1e40af 45%,#0284c7 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:60px 48px;position:relative;overflow:hidden;
+    }
+    .hero::before{
+      content:'';position:absolute;inset:0;
+      background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.06) 0%,transparent 60%),
+                 radial-gradient(circle at 80% 80%,rgba(6,182,212,.12) 0%,transparent 50%);
+    }
+    /* road lines decoration */
+    .hero::after{
+      content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+      width:4px;height:40%;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.4) 0px,rgba(255,255,255,.4) 20px,transparent 20px,transparent 40px);
+    }
+    .hero-inner{position:relative;z-index:1;text-align:center;width:100%;max-width:400px}
+    .hero-logo-ring{
+      width:80px;height:80px;border-radius:22px;margin:0 auto 28px;
+      background:rgba(255,255,255,.15);backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.25);
+      display:flex;align-items:center;justify-content:center;
+      font-size:38px;color:#fff;
+    }
+    .hero h1{font-size:32px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:14px}
+    .hero p{font-size:15px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:36px}
+    .hero-feats{display:flex;flex-direction:column;gap:13px;text-align:left}
+    .hero-feat{
+      display:flex;align-items:center;gap:14px;
+      background:rgba(255,255,255,.09);backdrop-filter:blur(8px);
+      padding:13px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+    }
+    .hero-feat i{font-size:20px;color:#7dd3fc;flex-shrink:0}
+    .hero-feat span{color:rgba(255,255,255,.88);font-size:13.5px;font-weight:500}
+    .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px}
+    .hstat{background:rgba(255,255,255,.1);border-radius:10px;padding:14px 8px;text-align:center;border:1px solid rgba(255,255,255,.12)}
+    .hstat .v{font-size:22px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace}
+    .hstat .l{font-size:10px;color:rgba(255,255,255,.55);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+
+    /* ─── Form side (right) ─── */
+    .form-side{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:48px 40px;background:var(--surface);overflow-y:auto;
+    }
+    .form-wrap{width:100%;max-width:420px}
+
+    /* Wordmark */
+    .wordmark{display:flex;align-items:center;gap:10px;margin-bottom:36px}
+    .wm-icon{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px}
+    .wm-text{font-size:17px;font-weight:700;letter-spacing:-.01em}
+
+    .form-heading{font-size:24px;font-weight:800;margin-bottom:4px}
+    .form-sub{font-size:13.5px;color:var(--muted);margin-bottom:28px}
+
+    /* ─── 3-Tab switcher ─── */
+    .role-tabs{
+      display:grid;grid-template-columns:repeat(3,1fr);
+      background:var(--bg);border-radius:11px;padding:4px;
+      margin-bottom:28px;border:1px solid var(--border);gap:3px;
+    }
+    .role-tab{
+      padding:10px 6px;text-align:center;border-radius:8px;
+      cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);
+      transition:all .2s;border:none;background:none;font-family:inherit;
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      line-height:1.2;
+    }
+    .role-tab i{font-size:18px}
+    .role-tab.active{
+      background:var(--surface);color:var(--primary-l);
+      box-shadow:0 1px 6px rgba(0,0,0,.10);
+    }
+    .role-tab.active i{color:var(--primary-l)}
+
+    /* Role indicator pill */
+    .role-pill{
+      display:inline-flex;align-items:center;gap:6px;
+      font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:20px;
+      margin-bottom:20px;
+    }
+    .role-pill.citizen{background:rgba(6,182,212,.12);color:#0891b2}
+    .role-pill.admin{background:rgba(168,85,247,.12);color:#7c3aed}
+    .role-pill.crew{background:rgba(249,115,22,.12);color:#ea580c}
+
+    /* ─── Form elements ─── */
+    .f-label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px}
+    .f-input{
+      width:100%;padding:11px 14px;border-radius:9px;
+      border:1.5px solid var(--border);background:var(--bg);
+      color:var(--text);font-size:14px;font-family:inherit;
+      outline:none;transition:all .2s;
+    }
+    .f-input:focus{border-color:var(--primary-l);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    .f-group{margin-bottom:16px}
+    .input-row{display:flex;gap:8px}
+    .input-row .f-input{flex:1}
+
+    /* Password toggle */
+    .pw-wrap{position:relative}
+    .pw-wrap .f-input{padding-right:42px}
+    .pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px}
+
+    /* Buttons */
+    .btn-main{
+      display:flex;align-items:center;justify-content:center;gap:9px;
+      width:100%;padding:12px;border-radius:9px;font-size:14px;font-weight:700;
+      cursor:pointer;border:none;font-family:inherit;transition:all .2s;
+    }
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-l);box-shadow:0 4px 16px rgba(59,130,246,.3)}
+    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+    .btn-outline:hover{border-color:var(--primary-l)}
+    .btn-google{
+      display:flex;align-items:center;justify-content:center;gap:12px;
+      width:100%;padding:12px;border-radius:9px;font-size:14px;font-weight:600;
+      cursor:pointer;border:1.5px solid var(--border);background:var(--surface);
+      color:var(--text);font-family:inherit;transition:all .2s;text-decoration:none;
+    }
+    .btn-google:hover{border-color:#4285f4;box-shadow:0 2px 10px rgba(66,133,244,.18);color:var(--text)}
+    .btn-sm-link{background:none;border:none;color:var(--primary-l);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:inherit}
+    .btn-sm-link:hover{text-decoration:underline}
+    .btn-sm-link.disabled{color:var(--muted);cursor:not-allowed;pointer-events:none}
+
+    /* Divider */
+    .divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:12px}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* OTP inputs */
+    .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+    .otp-box{
+      width:46px;height:52px;text-align:center;font-size:22px;font-weight:700;
+      font-family:'JetBrains Mono',monospace;
+      border:1.5px solid var(--border);border-radius:9px;
+      background:var(--bg);color:var(--text);outline:none;transition:all .2s;
+    }
+    .otp-box:focus{border-color:var(--primary-l);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+
+    /* Timer */
+    .timer-row{text-align:center;font-size:13px;color:var(--muted);margin-bottom:14px}
+    .timer-val{color:var(--primary-l);font-weight:700;font-family:'JetBrains Mono',monospace}
+
+    /* Alerts */
+    .f-alert{border-radius:9px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px}
+    .f-alert.error{background:rgba(239,68,68,.09);color:#b91c1c;border:1px solid rgba(239,68,68,.2)}
+    .f-alert.success{background:rgba(16,185,129,.09);color:#065f46;border:1px solid rgba(16,185,129,.2)}
+    .f-alert.info{background:rgba(59,130,246,.09);color:#1e40af;border:1px solid rgba(59,130,246,.15)}
+
+    /* Step visibility */
+    .step{display:none}
+    .step.active{display:block}
+
+    /* Theme toggle */
+    .theme-toggle{position:absolute;top:20px;right:20px;background:none;border:1.5px solid var(--border);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .2s}
+    .theme-toggle:hover{background:var(--bg)}
+
+    /* Footer note */
+    .login-footer{font-size:11.5px;color:var(--light);text-align:center;margin-top:28px;line-height:1.6}
+
+    @media(max-width:768px){
+      .login-grid{grid-template-columns:1fr}
+      .hero{display:none}
+      .form-side{padding:32px 20px}
+    }
+  </style>
+</head>
+<body>
+<div class="login-grid">
+
+  <!-- ── Hero ─────────────────────────────────── -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-logo-ring"><i class="bi bi-radar"></i></div>
+      <h1>Smart Road Damage<br>Detection System</h1>
+      <p>AI-powered infrastructure monitoring that detects, classifies, and tracks road hazards in real time — keeping cities safer.</p>
+      <div class="hero-feats">
+        <div class="hero-feat"><i class="bi bi-cpu-fill"></i><span>YOLOv11 AI with 94%+ detection accuracy</span></div>
+        <div class="hero-feat"><i class="bi bi-geo-alt-fill"></i><span>Real-time GPS hazard mapping & alerts</span></div>
+        <div class="hero-feat"><i class="bi bi-people-fill"></i><span>Three-role portal — Citizen, Admin & Crew</span></div>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="v">12K+</div><div class="l">Reports</div></div>
+        <div class="hstat"><div class="v">94%</div><div class="l">Accuracy</div></div>
+        <div class="hstat"><div class="v">48h</div><div class="l">Avg. Repair</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Form side ──────────────────────────── -->
+  <div class="form-side" style="position:relative">
+
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <i class="bi bi-moon-stars" id="themeIcon"></i>
+    </button>
+
+    <div class="form-wrap">
+      <div class="wordmark">
+        <img 
+          src="{{ url_for('static', filename='images/Road_NextGen_Logo_Final.png') }}" 
+          alt="Road NextGen Logo"
+          style="height: 60px; width: auto; min-width: 40px; object-fit: contain;"
+          
+        />
+      </div>
+
+      <h2 class="form-heading">Sign In</h2>
+      <p class="form-sub">Select your role and sign in to continue</p>
+
+      <!-- Flash messages from Flask -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+          <div class="f-alert {{ 'error' if cat in ['danger','error'] else cat }}">
+            <i class="bi bi-{{ 'exclamation-circle' if cat in ['danger','error','warning'] else 'check-circle' }}"></i>
+            <span>{{ msg }}</span>
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% if error %}
+      <div class="f-alert error"><i class="bi bi-exclamation-circle"></i><span>{{ error }}</span></div>
+      {% endif %}
+
+      <!-- ── 3-Tab Selector ─────────────────── -->
+      <div class="role-tabs" role="tablist">
+        <button class="role-tab {% if active_tab == 'citizen' %}active{% endif %}"
+                onclick="switchRole('citizen')" id="tab-citizen">
+          <i class="bi bi-person-walking"></i>Citizen
+        </button>
+        <button class="role-tab {% if active_tab == 'admin' %}active{% endif %}"
+                onclick="switchRole('admin')" id="tab-admin">
+          <i class="bi bi-building"></i>Municipality<br>Admin
+        </button>
+        <button class="role-tab {% if active_tab == 'crew' %}active{% endif %}"
+                onclick="switchRole('crew')" id="tab-crew">
+          <i class="bi bi-cone-striped"></i>Maintenance<br>Crew
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           CITIZEN PANEL
+      ══════════════════════════════════════ -->
+      <div id="panel-citizen" class="{% if active_tab != 'citizen' %}d-none{% endif %}">
+        <div class="role-pill citizen"><i class="bi bi-person-walking"></i>Citizen Portal</div>
+
+        <!-- Step 1: Email + optional name (new user) -->
+        <div id="step-email" {% if request.args.get('step') == 'otp' %}style="display:none"{% endif %}>
+
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+            Enter your Gmail to receive a one-time code.
+            <span style="color:var(--light);font-size:11.5px;display:block;margin-top:2px;">
+              Session lasts <strong>1 day</strong>.
+            </span>
+          </p>
+
+          <form method="POST" action="{{ url_for('auth.citizen_send_otp') }}" id="otpRequestForm">
+
+            <!-- Name field — only for new users -->
+            {% if request.args.get('show_name') == '1' %}
+            <div class="f-group">
+              <label class="f-label">Your Name</label>
+              <input type="text" name="name" class="f-input" placeholder="E.g. Arjun Kumar"
+                    required value="{{ request.args.get('prefill_name','') }}" autocomplete="name"/>
+            </div>
+            {% endif %}
+
+            <div class="f-group">
+              <label class="f-label">Gmail Address</label>
+              <input type="email" name="email" class="f-input"
+                    placeholder="you@gmail.com" required autocomplete="email"
+                    value="{{ request.args.get('prefill_email','') }}"/>
+            </div>
+
+            <button type="button" class="btn-main btn-primary mb-3"
+                    onclick="openTerms('otp')">
+              <i class="bi bi-envelope-at"></i> Send OTP Code
+            </button>
+          </form>
+
+          <div class="divider">or</div>
+
+          <button type="button" class="btn-google mb-2" onclick="openTerms('oauth')">
+            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+            <span style="font-size:11px;color:var(--muted);margin-left:4px;">(30-day session)</span>
+          </button>
+
+          <p class="login-footer">Only <strong>@gmail.com</strong> accounts accepted.</p>
+        </div>
+
+        <!-- Step 2: OTP entry -->
+        <div id="step-otp" {% if request.args.get('step') != 'otp' %}style="display:none"{% endif %}>
+
+          <div class="f-alert info" style="margin-bottom:16px">
+            <i class="bi bi-envelope-check"></i>
+            <span>Code sent to <strong>{{ request.args.get('otp_email','your email') }}</strong>.
+                  Check your inbox and spam folder.</span>
+          </div>
+
+          <form method="POST" action="{{ url_for('auth.citizen_verify_otp') }}" id="otpVerifyForm">
+            <!-- Pass email through hidden field (no session dependency) -->
+            <input type="hidden" name="otp_email"
+                  value="{{ request.args.get('otp_email','') }}"/>
+
+            <label class="f-label" style="text-align:center;display:block;margin-bottom:10px;">
+              Enter 6-digit code
+            </label>
+            <div class="otp-row" id="otpBoxes">
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+            </div>
+            <input type="hidden" name="otp" id="otpHidden"/>
+
+            <div class="timer-row">
+              Code expires in <span class="timer-val" id="otpTimer">10:00</span>
+            </div>
+
+            <button type="submit" class="btn-main btn-primary mb-3"
+                    onclick="assembleOtp()">
+              <i class="bi bi-shield-check"></i> Verify &amp; Sign In
+            </button>
+          </form>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+            <form method="POST" action="{{ url_for('auth.citizen_resend_otp') }}" style="margin:0">
+              <input type="hidden" name="otp_email"
+                    value="{{ request.args.get('otp_email','') }}"/>
+              <button type="submit" class="btn-sm-link" id="resendBtn" disabled>
+                <i class="bi bi-arrow-clockwise"></i> Resend code
+              </button>
+            </form>
+            <a href="{{ url_for('auth.login', tab='citizen') }}" class="btn-sm-link">
+              <i class="bi bi-arrow-left"></i> Use different email
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════════════════════════════
+           MUNICIPALITY ADMIN PANEL
+      ══════════════════════════════════════ -->
+      <div id="panel-admin" class="{% if active_tab != 'admin' %}d-none{% endif %}">
+        <div class="role-pill admin"><i class="bi bi-building"></i>Municipality Admin Portal</div>
+
+        <div class="f-alert info" style="margin-bottom:16px">
+          <i class="bi bi-info-circle"></i>
+          <span>Admin accounts are provisioned by the system administrator. Contact IT support if you don't have credentials.</span>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.staff_login') }}" id="adminForm">
+          <input type="hidden" name="role" value="admin"/>
+          <div class="f-group">
+            <label class="f-label">Admin Email Address</label>
+            <input type="email" name="email" class="f-input" placeholder="admin@municipality.gov"
+                   required autocomplete="username" value="{{ request.form.get('email','') if request.form.get('role')=='admin' else '' }}"/>
+          </div>
+          <div class="f-group">
+            <label class="f-label">Password</label>
+            <div class="pw-wrap">
+              <input type="password" name="password" id="adminPw" class="f-input" placeholder="Enter your password" required autocomplete="current-password"/>
+              <button type="button" class="pw-eye" onclick="togglePw('adminPw','adminEye')" tabindex="-1">
+                <i class="bi bi-eye" id="adminEye"></i>
+              </button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px">
+            <a href="#" style="font-size:13px;color:var(--primary-l);text-decoration:none;font-weight:500">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn-main btn-primary">
+            <i class="bi bi-building"></i> Sign In as Admin
+          </button>
+        </form>
+
+        <p class="login-footer">
+          Authorised municipality personnel only.<br/>
+          Unauthorised access attempts are logged.
+        </p>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           MAINTENANCE CREW PANEL
+      ══════════════════════════════════════ -->
+      <div id="panel-crew" class="{% if active_tab != 'crew' %}d-none{% endif %}">
+        <div class="role-pill crew"><i class="bi bi-cone-striped"></i>Maintenance Crew Portal</div>
+
+        <div class="f-alert info" style="margin-bottom:16px">
+          <i class="bi bi-info-circle"></i>
+          <span>Crew credentials are issued by your municipality administrator when you're added to the system.</span>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.staff_login') }}" id="crewForm">
+          <input type="hidden" name="role" value="crew"/>
+          <div class="f-group">
+            <label class="f-label">Work Email Address</label>
+            <input type="email" name="email" class="f-input" placeholder="crew@municipality.gov"
+                   required autocomplete="username" value="{{ request.form.get('email','') if request.form.get('role')=='crew' else '' }}"/>
+          </div>
+          <div class="f-group">
+            <label class="f-label">Password</label>
+            <div class="pw-wrap">
+              <input type="password" name="password" id="crewPw" class="f-input" placeholder="Enter your password" required autocomplete="current-password"/>
+              <button type="button" class="pw-eye" onclick="togglePw('crewPw','crewEye')" tabindex="-1">
+                <i class="bi bi-eye" id="crewEye"></i>
+              </button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px">
+            <a href="#" style="font-size:13px;color:var(--primary-l);text-decoration:none;font-weight:500">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn-main btn-primary">
+            <i class="bi bi-cone-striped"></i> Sign In as Crew
+          </button>
+        </form>
+
+        <p class="login-footer">
+          If you can't sign in, contact your municipality admin<br/>
+          to reset your credentials.
+        </p>
+      </div>
+
+      <!-- Terms Modal -->
+      <div id="terms-modal"
+          style="display:none;position:fixed;inset:0;z-index:1000;
+                  background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
+                  align-items:center;justify-content:center;padding:16px;">
+        <div style="background:var(--surface);border:1px solid var(--border);
+                    border-radius:20px;padding:2rem 1.75rem;
+                    max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">
+          <h2 style="color:var(--text);font-size:1.1rem;font-weight:700;margin-bottom:6px;">
+            Before you continue
+          </h2>
+          <p style="color:var(--muted);font-size:0.82rem;margin-bottom:20px;line-height:1.6;">
+            Road NextGen will use the following to set up your profile:
+          </p>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(59,130,246,.06);
+                        border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:10px 14px;">
+              <span style="font-size:1.2rem;">✉️</span>
+              <div>
+                <p style="color:var(--text);font-size:0.82rem;font-weight:600;margin:0;">Email address</p>
+                <p style="color:var(--muted);font-size:0.75rem;margin:0;">Your account identifier</p>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(59,130,246,.06);
+                        border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:10px 14px;">
+              <span style="font-size:1.2rem;">👤</span>
+              <div>
+                <p style="color:var(--text);font-size:0.82rem;font-weight:600;margin:0;">Name &amp; avatar</p>
+                <p style="color:var(--muted);font-size:0.75rem;margin:0;">
+                  From Google (OAuth) or entered by you (OTP)
+                </p>
+              </div>
+            </div>
+          </div>
+          <p style="color:var(--light);font-size:0.72rem;text-align:center;
+                    margin-bottom:16px;line-height:1.55;">
+            We never sell your data or share it with third parties.<br>
+            By continuing you agree to our
+            <a href="/terms" style="color:var(--primary-l);text-decoration:none;">Terms of Service</a>.
+          </p>
+          <div style="display:flex;gap:10px;">
+            <button onclick="closeTerms()"
+                    style="flex:1;padding:12px;background:transparent;
+                          border:1px solid var(--border);border-radius:12px;
+                          color:var(--muted);font-size:0.875rem;cursor:pointer;font-family:inherit;">
+              Cancel
+            </button>
+            <button id="terms-agree-btn" onclick="agreeAndContinue()"
+                    style="flex:2;padding:12px;background:var(--primary);border:none;
+                          border-radius:12px;color:#fff;font-size:0.875rem;
+                          font-weight:700;cursor:pointer;font-family:inherit;">
+              Agree &amp; Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /form-wrap -->
+  </div><!-- /form-side -->
+</div><!-- /login-grid -->
+
+<script>
+// ─── Theme ───────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('rv-theme') || 'light';
+  document.documentElement.dataset.theme = saved;
+  document.getElementById('themeIcon').className =
+    saved === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+})();
+function toggleTheme(){
+  const dark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  document.getElementById('themeIcon').className =
+    dark ? 'bi bi-moon-stars' : 'bi bi-sun';
+  localStorage.setItem('rv-theme', document.documentElement.dataset.theme);
+}
+
+// ─── Role Tab Switcher ────────────────────────────────────────
+function switchRole(role) {
+  ['citizen','admin','crew'].forEach(r => {
+    document.getElementById(`tab-${r}`).classList.toggle('active', r === role);
+    document.getElementById(`panel-${r}`).classList.toggle('d-none', r !== role);
+  });
+  history.replaceState(null, '', `?tab=${role}`);
+}
+
+// ─── Password toggle ──────────────────────────────────────────
+function togglePw(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  if (input.type === 'password') {
+    input.type = 'text'; icon.className = 'bi bi-eye-slash';
+  } else {
+    input.type = 'password'; icon.className = 'bi bi-eye';
+  }
+}
+
+// ─── Terms Modal ─────────────────────────────────────────────
+let _termsAction = 'otp';
+function openTerms(action) {
+  _termsAction = action;
+  const m = document.getElementById('terms-modal');
+  m.style.display = 'flex';
+}
+function closeTerms() {
+  document.getElementById('terms-modal').style.display = 'none';
+}
+function agreeAndContinue() {
+  closeTerms();
+  if (_termsAction === 'oauth') {
+    window.location.href = "{{ url_for('auth.google_login') }}";
+  } else {
+    document.getElementById('otpRequestForm').submit();
+  }
+}
+document.getElementById('terms-modal').addEventListener('click', function(e){
+  if (e.target === this) closeTerms();
+});
+
+// ─── OTP box behaviour ────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const boxes = document.querySelectorAll('.otp-box');
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/\D/g,'').slice(0,1);
+      if (box.value && i < boxes.length - 1) boxes[i+1].focus();
+    });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) boxes[i-1].focus();
+    });
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const digits = (e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);
+      [...digits].forEach((d, idx) => { if (boxes[idx]) boxes[idx].value = d; });
+      boxes[Math.min(digits.length, 5)]?.focus();
+    });
+  });
+
+  const otpStep = document.getElementById('step-otp');
+  if (otpStep && otpStep.style.display !== 'none') {
+    boxes[0]?.focus();
+    startOtpTimer();
+    startResendTimer();
+  }
+});
+
+function assembleOtp() {
+  const digits = [...document.querySelectorAll('.otp-box')].map(b => b.value).join('');
+  document.getElementById('otpHidden').value = digits;
+}
+
+// ─── 10-min countdown ────────────────────────────────────────
+function startOtpTimer() {
+  let secs = 600;
+  const el = document.getElementById('otpTimer');
+  if (!el) return;
+  const iv = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(iv);
+      el.textContent = 'Expired';
+      el.style.color = 'var(--danger)';
+      return;
+    }
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs % 60).padStart(2,'0');
+    el.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// ─── Resend enabled after 60 s ───────────────────────────────
+function startResendTimer() {
+  let secs = 60;
+  const btn = document.getElementById('resendBtn');
+  if (!btn) return;
+  btn.textContent = `⟳ Resend code (${secs}s)`;
+  const iv = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(iv);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Resend code';
+      return;
+    }
+    btn.textContent = `⟳ Resend code (${secs}s)`;
+  }, 1000);
+}
+
+// ─── Shake keyframe ───────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}';
+document.head.appendChild(style);
+</script>
+
+</body>
+</html>

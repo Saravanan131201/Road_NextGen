@@ -1,0 +1,813 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Road NextGen{% endblock %}
+{% block page_title %}
+  <span style="display:flex;align-items:center;gap:10px">
+    Municipality Dashboard
+    <span style="font-size:10px;font-weight:500;background:rgba(239,68,68,.15);color:#dc2626;padding:2px 7px;border-radius:20px;animation:pulse 2s infinite;white-space:nowrap;flex-shrink:0">● Live</span>
+  </span>
+{% endblock %}
+
+{% block extra_css %}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* ── Sidebar mobile fix ── */
+.rv-sidebar {
+  transition: transform .25s ease;
+}
+@media(max-width:991px) {
+  .rv-sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    z-index: 1045;
+    transform: translateX(-100%);
+  }
+  .rv-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 1044;
+  }
+  .sidebar-backdrop.show {
+    display: block;
+  }
+}
+
+/* ── KPI cards ── */
+.kpi-card {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius);
+  padding: 18px 20px;
+  box-shadow: var(--rv-shadow);
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--rv-shadow-lg); }
+.kpi-card::after {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 56px; height: 56px;
+  border-radius: 0 0 0 56px;
+  opacity: .08;
+}
+.kpi-card.primary::after { background: var(--rv-primary); }
+.kpi-card.danger::after  { background: var(--rv-danger); }
+.kpi-card.success::after { background: var(--rv-success); }
+.kpi-card.warning::after { background: var(--rv-warning); }
+.kpi-number { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+@media(max-width:575px) { .kpi-number { font-size: 22px; } }
+.kpi-label  { font-size: 11.5px; color: var(--rv-text-muted); margin-top: 5px; }
+.kpi-icon   { position: absolute; top: 18px; right: 18px; font-size: 24px; opacity: .18; }
+.kpi-trend  { font-size: 11px; color: var(--rv-text-light); margin-top: 8px; }
+
+/* Make the Bootstrap col itself a flex column so the card stretches */
+.col-12.col-xl-3 {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Alert items ── */
+.alert-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:var(--rv-radius-sm); background:var(--rv-surface-2); border:1px solid var(--rv-border); margin-bottom:8px; flex-shrink:0; }
+.alert-item.critical {
+  border-left: 3px solid var(--rv-danger);
+  animation: criticalBlink 2.4s ease-in-out infinite;
+}
+
+@keyframes criticalBlink {
+  0%, 100% { background: rgba(239, 68, 68, 0.06); }
+  50%       { background: rgba(239, 68, 68, 0.18); }
+}
+
+/* Dark mode override — slightly brighter pulse so it reads on dark surfaces */
+[data-theme="dark"] .alert-item.critical {
+  animation: criticalBlinkDark 2.4s ease-in-out infinite;
+}
+
+@keyframes criticalBlinkDark {
+  0%, 100% { background: rgba(239, 68, 68, 0.10); }
+  50%       { background: rgba(239, 68, 68, 0.28); }
+}
+.alert-item.high     { border-left:3px solid var(--rv-warning); }
+
+/* ── Recent report cards (replaces table on mobile) ── */
+.rr-card { background:var(--rv-surface); border:1px solid var(--rv-border); border-radius:var(--rv-radius-sm); padding:12px 14px; margin-bottom:8px; }
+.rr-top  { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.rr-damage { font-size:13px; font-weight:700; }
+.rr-meta { display:flex; flex-direction:column; gap:3px; margin-bottom:10px; }
+.rr-meta-loc { display:flex; align-items:flex-start; gap:4px; font-size:11.5px; color:var(--rv-text-muted); line-height:1.4; }
+.rr-meta-loc i { flex-shrink:0; margin-top:1px; }
+.rr-meta-time { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--rv-text-light); }
+.rr-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.rr-action-btn { padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:600; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-family:inherit; }
+.rr-action-verify { background:rgba(16,185,129,.12); color:#059669; }
+.rr-action-reject { background:rgba(239,68,68,.1);  color:#dc2626; }
+.rr-action-assign { background:var(--rv-primary);   color:#fff; }
+
+/* ── Desktop table ── */
+.rr-table-wrap { overflow-x:auto; }
+@media(max-width:767px) {
+  .rr-table-wrap { display:none; }
+  .rr-cards-wrap  { display:block; }
+}
+@media(min-width:768px) {
+  .rr-table-wrap { display:block; }
+  .rr-cards-wrap  { display:none; }
+}
+
+/* ── Severity select grid ── */
+.sev-select-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px; }
+@media(max-width:400px) { .sev-select-grid { grid-template-columns:repeat(2,1fr); } }
+.sev-select-btn { padding:10px 4px; text-align:center; border:2px solid var(--rv-border); border-radius:9px; cursor:pointer; transition:all .2s; user-select:none; }
+.sev-select-btn:hover { border-color:var(--rv-primary-light); }
+
+/* ── Team grid ── */
+.team-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px; }
+@media(max-width:400px) { .team-grid { grid-template-columns:1fr; } }
+.team-select-card { border:1.5px solid var(--rv-border); border-radius:var(--rv-radius-sm); padding:10px 12px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:10px; }
+.team-select-card:hover { border-color:var(--rv-primary-light); }
+
+/* ── Equal height row ── */
+.dash-mid-row { display: flex; flex-direction: column; gap: 1rem; }
+.dash-mid-row .rv-card { flex: 1; }
+
+/* ── Activity feed ── */
+.act-item { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--rv-border); font-size:12.5px; }
+.act-item:last-child { border-bottom:none; }
+.act-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+
+
+/* ── Modal mobile ── */
+@media(max-width:575px) {
+  .modal-dialog { margin:8px; }
+  .modal-body   { padding:14px; }
+  .modal-footer { padding:10px 14px; gap:8px; flex-wrap:nowrap; }
+  .modal-footer .rv-btn { flex:1; justify-content:center; }
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Sidebar backdrop (mobile) ──────────────────────────────────────────── -->
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+<!-- ── KPIs ──────────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card primary">
+      <i class="bi bi-file-earmark-text kpi-icon"></i>
+      <div class="kpi-number" style="color:var(--rv-primary-light)">{{ stats.total }}</div>
+      <div class="kpi-label">Total Reports</div>
+      <div class="kpi-trend"><i class="bi bi-arrow-up text-success"></i> 12% this month</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card danger">
+      <i class="bi bi-exclamation-octagon kpi-icon"></i>
+      <div class="kpi-number" style="color:var(--rv-danger)">{{ stats.critical }}</div>
+      <div class="kpi-label">Critical Issues</div>
+      <div class="kpi-trend">Immediate action required</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card success">
+      <i class="bi bi-check-circle kpi-icon"></i>
+      <div class="kpi-number" style="color:var(--rv-success)">{{ stats.by_status.get('completed', 0) }}</div>
+      <div class="kpi-label">Repairs Completed</div>
+      <div class="kpi-trend">All-time total</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card warning">
+      <i class="bi bi-clock kpi-icon"></i>
+      <div class="kpi-number" style="color:var(--rv-warning)">48h</div>
+      <div class="kpi-label">Avg. Repair Time</div>
+      <div class="kpi-trend"><i class="bi bi-arrow-down text-success"></i> Improved by 8%</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Map + Status + Alerts ─────────────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- Left: Map -->
+  <div class="col-12 col-xl-5">
+    <div class="rv-card h-100" style="display:flex;flex-direction:column;padding-bottom:0">
+      <div class="rv-card-header">
+        <div>
+          <div class="rv-card-title"><i class="bi bi-map me-2 text-primary"></i>City Damage Map</div>
+          <div class="rv-card-subtitle" id="mapReportCount">Loading…</div>
+        </div>
+        <a href="{{ url_for('admin.map_view') }}" class="rv-btn rv-btn-secondary rv-btn-sm">Full Map</a>
+      </div>
+      <div id="adminDashMap" class="rv-map" style="flex:1;min-height:300px"></div>
+      <div style="display:flex;gap:14px;padding:10px 4px 14px;flex-wrap:wrap">
+        {% for sev, color in [('Critical','#ef4444'),('High','#f97316'),('Medium','#f59e0b'),('Low','#10b981')] %}
+        <div style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--rv-text-muted)">
+          <div style="width:10px;height:10px;border-radius:50%;background:{{ color }}"></div>{{ sev }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Middle: Status chart + Activity feed stacked -->
+  <div class="col-12 col-xl-4 dash-mid-row">
+    <div class="rv-card">
+      <div class="rv-card-title mb-3"><i class="bi bi-pie-chart me-2 text-primary"></i>Status Breakdown</div>
+      <canvas id="statusChart" height="180"></canvas>
+    </div>
+
+    <!-- Recent Activity — fills the gap -->
+    <div class="rv-card" style="flex:1">
+      <div class="rv-card-header mb-2">
+        <div class="rv-card-title"><i class="bi bi-activity me-2 text-primary"></i>Recent Activity</div>
+      </div>
+      <div style="max-height:180px;overflow-y:auto">
+        {% for r in reports[:8] %}
+        <div class="act-item">
+          <div class="act-dot" style="background:{{ '#ef4444' if r.severity=='critical' else '#f97316' if r.severity=='high' else '#fbbf24' if r.severity=='medium' else '#22c55e' }}"></div>
+          <div style="min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              {{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace','_',' ') | list | join(', ') | title) }}
+              <span class="badge-status badge-status-{{ r.status }}" style="font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">{{ r.status|replace('_',' ')|title }}</span>
+            </div>
+            <div style="font-size:11px;color:var(--rv-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.location.address if r.location and r.location.address else 'Unknown' }}</div>
+            <div style="font-size:10.5px;color:var(--rv-text-light)">{{ time_ago(r.created_at) if r.created_at else '' }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:var(--rv-text-muted);font-size:13px">No activity yet</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Live Alerts -->
+  <div class="col-12 col-xl-3" style="display:flex;flex-direction:column">
+    <div class="rv-card" style="display:flex;flex-direction:column;flex:1;align-self:stretch">
+      <div class="rv-card-header mb-3">
+        <div class="rv-card-title"><i class="bi bi-bell-fill me-2 text-danger"></i>Live Alerts</div>
+        <span style="font-size:11px;background:rgba(239,68,68,.12);color:#dc2626;padding:2px 8px;border-radius:20px">Real-time</span>
+      </div>
+       <div id="liveAlerts" style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:0">
+        {% set alert_shown = namespace(count=0) %}
+        {% for r in reports %}
+          {% if r.severity in ['critical','high'] and r.status != "completed" and alert_shown.count < 10 %}
+          {% set alert_shown.count = alert_shown.count + 1 %}
+          <div class="alert-item {{ r.severity }}">
+            <div style="width:8px;height:8px;border-radius:50%;background:{{ '#ef4444' if r.severity=='critical' else '#f97316' }};margin-top:5px;flex-shrink:0"></div>
+            <div style="min-width:0">
+              <div style="font-size:12.5px;font-weight:600">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }} — {{ r.severity|upper }}</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:1px">{{ r.location.address if r.location and r.location.address else 'Unknown location' }}</div>
+              <div style="font-size:11px;color:var(--rv-text-light);margin-top:1px">{{ time_ago(r.created_at) if r.created_at else '' }}</div>
+            </div>
+          </div>
+          {% endif %}
+        {% else %}
+          <div style="text-align:center;padding:24px;color:var(--rv-text-muted);font-size:13px">
+            <i class="bi bi-shield-check d-block mb-2" style="font-size:24px;color:var(--rv-success)"></i>No critical alerts
+          </div>
+          {% endfor %}
+        <div style="flex:1"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Recent Reports ─────────────────────────────────────────────────────── -->
+<div class="rv-card">
+  <div class="rv-card-header mb-3">
+    <div>
+      <div class="rv-card-title"><i class="bi bi-table me-2 text-primary"></i>Recent Reports</div>
+      <div class="rv-card-subtitle">Latest submissions requiring review</div>
+    </div>
+    <a href="{{ url_for('admin.reports') }}" class="rv-btn rv-btn-primary rv-btn-sm">
+      <i class="bi bi-arrow-right"></i> All Reports
+    </a>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="rr-table-wrap">
+    <table class="rv-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Type</th><th>Severity</th><th>Status</th>
+          <th>Location</th><th>Reported</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports[:10] %}
+        <tr>
+          <td><code style="font-size:11px;background:var(--rv-surface-2);padding:2px 6px;border-radius:4px">{{ r._id }}</code></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              {% if r.images and r.images.original %}
+              <img src="{{ r.images.original }}" style="width:30px;height:30px;border-radius:5px;object-fit:cover" alt=""/>
+              {% endif %}
+              <span style="font-weight:500;font-size:13px">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }}</span>
+            </div>
+          </td>
+          <td><span class="badge-status badge-severity-{{ r.severity }}" style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600">{{ r.severity | title }}</span></td>
+          <td><span class="badge-status badge-status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td>
+          <td style="max-width:220px;font-size:12px;color:var(--rv-text-muted)">
+            <div style="white-space:normal;line-height:1.4">{{ r.location.address if r.location and r.location.address else '—' }}</div>
+          </td>
+          <td style="font-size:12px;color:var(--rv-text-muted);white-space:nowrap">{{ time_ago(r.created_at) if r.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              {% if r.status == 'pending' %}
+              <button class="rr-action-btn rr-action-verify"
+                      onclick="showPreVerifyModal('{{ r._id }}','{{ r.severity }}','{{ r.reporter_id }}')">
+                <i class="bi bi-check-lg"></i> Verify
+              </button>
+              <button class="rr-action-btn rr-action-reject"
+                      onclick="showRejectModal('{{ r._id }}','{{ r.reporter_id }}')">
+                <i class="bi bi-x-lg"></i> Reject
+              </button>
+              {% elif r.status == 'verified' %}
+              <button class="rr-action-btn rr-action-assign"
+                     onclick="showAssignModal('{{ r._id }}','{{ r.severity }}','{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | join(', ')) }}')">
+                <i class="bi bi-people"></i> Assign
+              </button>
+              {% else %}
+              <span style="font-size:12px;color:var(--rv-text-muted)">{{ r.status|replace('_',' ')|title }}</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--rv-text-muted)">No reports yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile cards -->
+  <div class="rr-cards-wrap">
+    {% for r in reports[:10] %}
+    <div class="rr-card">
+      <div class="rr-top">
+        <div>
+          <div class="rr-damage">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }}</div>
+          <code style="font-size:10px;color:var(--rv-text-light)">{{ r._id }}</code>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="badge-status badge-severity-{{ r.severity }}" style="font-size:10.5px;padding:2px 8px;border-radius:20px;font-weight:600">{{ r.severity | title }}</span>
+          <span class="badge-status badge-status-{{ r.status }}" style="font-size:10.5px">{{ r.status|replace('_',' ')|title }}</span>
+        </div>
+      </div>
+      <div class="rr-meta">
+        {% if r.location and r.location.address %}
+        <div class="rr-meta-loc">
+          <i class="bi bi-geo-alt" style="color:var(--rv-danger)"></i>
+          <span>{{ r.location.address }}</span>
+        </div>
+        {% endif %}
+        <div class="rr-meta-time">
+          <i class="bi bi-clock"></i>
+          <span>{{ time_ago(r.created_at) if r.created_at else '—' }}</span>
+        </div>
+      </div>
+      <div class="rr-actions">
+        {% if r.status == 'pending' %}
+        <button class="rr-action-btn rr-action-verify"
+                onclick="showPreVerifyModal('{{ r._id }}','{{ r.severity }}','{{ r.reporter_id }}')">
+          <i class="bi bi-check-lg"></i> Verify
+        </button>
+        <button class="rr-action-btn rr-action-reject"
+                onclick="showRejectModal('{{ r._id }}','{{ r.reporter_id }}')">
+          <i class="bi bi-x-lg"></i> Reject
+        </button>
+        {% elif r.status == 'verified' %}
+        <button class="rr-action-btn rr-action-assign"
+                onclick="showAssignModal('{{ r._id }}','{{ r.severity }}','{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | join(', ')) }}')">
+          <i class="bi bi-people"></i> Assign Team
+        </button>
+        {% else %}
+        <span style="font-size:12px;color:var(--rv-text-muted)">{{ r.status|replace('_',' ')|title }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:var(--rv-text-muted);font-size:13px">No reports yet</div>
+    {% endfor %}
+  </div>
+</div>
+
+
+<!-- ══ Pre-Verify Modal ════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="preVerifyModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-shield-check me-2 text-success"></i>Review &amp; Verify Report
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pvReportId"/>
+        <input type="hidden" id="pvReporterId"/>
+        <input type="hidden" id="pvOriginalSeverity"/>
+        <div id="pvErr" class="alert alert-danger d-none" style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:var(--rv-radius-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--rv-text-muted)">
+          <i class="bi bi-info-circle text-success me-1"></i>
+          Adjust severity before verifying if needed. A reason is required if changed — the citizen will be notified.
+        </div>
+        <label class="rv-form-label">Severity</label>
+        <div class="sev-select-grid" id="pvSevGrid">
+          {% for sev, emoji, color in [('low','✅','#22c55e'),('medium','⚠️','#fbbf24'),('high','🔶','#f97316'),('critical','🚨','#ef4444')] %}
+          <div class="sev-select-btn" id="pvsev-{{ sev }}" onclick="pvPickSev('{{ sev }}','{{ color }}')">
+            <div style="font-size:20px">{{ emoji }}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--rv-text-muted);margin-top:3px;text-transform:capitalize">{{ sev }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="pvNewSeverity"/>
+        <div id="pvReasonWrap" style="margin-top:14px;display:none">
+          <label class="rv-form-label">Reason for severity change *</label>
+          <textarea id="pvReason" class="rv-form-control" rows="2"
+                    placeholder="Explain why you are adjusting the severity…"></textarea>
+          <div style="font-size:11px;color:var(--rv-text-muted);margin-top:4px">
+            <i class="bi bi-bell"></i> Citizen will be notified with this reason.
+          </div>
+        </div>
+        <div id="pvNoChangeNote" style="margin-top:12px;font-size:12.5px;color:var(--rv-text-muted);display:none">
+          <i class="bi bi-check-circle text-success"></i> Severity unchanged — no notification will be sent.
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-sm" id="pvVerifyBtn"
+                style="background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)"
+                onclick="doVerify()">
+          <i class="bi bi-check-circle"></i> Confirm &amp; Verify
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ Assign Modal ════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-people me-2 text-primary"></i>Assign to Team
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="assignReportId"/>
+        <div id="assignErr" class="alert alert-danger d-none" style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+        <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);border-radius:var(--rv-radius-sm);padding:12px 14px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <i class="bi bi-cpu-fill text-primary"></i>
+            <span style="font-size:13px;font-weight:600">AI Recommendation</span>
+          </div>
+          <div style="font-size:13px;color:var(--rv-text-muted)">
+            Severity <strong id="recSeverity"></strong> →
+            <span id="recTeamName" style="font-weight:700;color:var(--rv-primary-light)"></span>
+            <span style="font-size:10px;background:rgba(6,182,212,.12);color:#0891b2;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:4px">AI Suggested</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--rv-text-muted);margin-top:3px">You can override below.</div>
+        </div>
+        <label class="rv-form-label">Select Team *</label>
+        <div class="team-grid" id="teamGrid">
+          {% for tk, tv in teams.items() %}
+          <div class="team-select-card" id="tcard-{{ tk }}" onclick="selectAssignTeam('{{ tk }}')">
+            <div style="width:34px;height:34px;border-radius:8px;background:{{ tv.color }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">{{ tk[0].upper() }}</div>
+            <div>
+              <div style="font-size:13px;font-weight:600">{{ tv.name }}</div>
+              <div style="font-size:11px;color:var(--rv-text-muted)">{{ tv.severity|title }} · max {{ tv.max_workers }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="selectedTeamKey"/>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="rv-form-label">Priority</label>
+            <select id="assignPriority" class="rv-form-control">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="rv-form-label">Due Date</label>
+            <input type="date" id="assignDueDate" class="rv-form-control"/>
+          </div>
+          <div class="col-12">
+            <label class="rv-form-label">Notes for Team Head</label>
+            <textarea id="assignNotes" class="rv-form-control" rows="2" placeholder="Special instructions…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="assignSaveBtn" onclick="doAssign()">
+          <i class="bi bi-check-lg"></i> Assign to Team
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ Reject Modal ════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:600">
+          <i class="bi bi-x-circle me-2 text-danger"></i>Reject Report
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectReportId"/>
+        <input type="hidden" id="rejectReporterId"/>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:var(--rv-radius-sm);padding:10px 13px;font-size:12.5px;color:var(--rv-text-muted);margin-bottom:14px">
+          <i class="bi bi-bell me-1 text-danger"></i> The citizen will receive a notification with your rejection reason.
+        </div>
+        <label class="rv-form-label">Reason * <span style="font-weight:400">(required — sent to citizen)</span></label>
+        <textarea id="rejectReason" class="rv-form-control" rows="3"
+                  placeholder="e.g. duplicate report, unclear image, outside jurisdiction…"></textarea>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-danger" onclick="rejectReport()">
+          <i class="bi bi-x-lg"></i> Reject &amp; Notify
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Sidebar mobile toggle ─────────────────────────────────────────────────── */
+function closeSidebar() {
+  document.querySelector('.rv-sidebar').classList.remove('sidebar-open', 'mobile-open');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (backdrop) { backdrop.classList.remove('show'); }
+  const overlay = document.getElementById('sidebarOverlay');
+  if (overlay) { overlay.classList.remove('active'); }
+  document.body.style.overflow = '';
+}
+
+/* ── Map ──────────────────────────────────────────────────────────────────── */
+const SEVERITY_COLORS = {low:'#10b981',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'};
+
+function initAdminMap() {
+  const map = L.map('adminDashMap').setView([13.0827, 80.2707], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap', maxZoom:19
+  }).addTo(map);
+  fetch('/api/reports/all').then(r => r.json()).then(d => {
+    const rpts = d.reports || [];
+    document.getElementById('mapReportCount').textContent = `${rpts.length} active reports`;
+    rpts.forEach(rep => {
+      const coords = rep.location?.coordinates;
+      if (!coords || !coords[0]) return;
+      const color = SEVERITY_COLORS[rep.severity] || '#94a3b8';
+      L.circleMarker([coords[1], coords[0]], {
+        radius: rep.severity==='critical' ? 12 : rep.severity==='high' ? 10 : 8,
+        fillColor: color, color:'#fff', weight:2, fillOpacity:.9
+      }).addTo(map).bindPopup(`
+        <div style="font-size:13px;min-width:180px">
+          <b>${(rep.display_names?.length ? rep.display_names.join(', ') : (rep.damage_types||[]).map(dt=>dt.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())).join(', ')) || '—'}</b><br>
+          <span style="color:${color};font-weight:600">${rep.severity?.toUpperCase()}</span><br>
+          <span style="color:#666;font-size:12px">${rep.location?.address?.slice(0,60)||'Unknown'}</span><br>
+          <span style="color:#666;font-size:11px">Status: ${rep.status}</span>
+        </div>`);
+    });
+  }).catch(() => {});
+}
+
+/* ── Status chart ─────────────────────────────────────────────────────────── */
+function initStatusChart() {
+  const ctx     = document.getElementById('statusChart').getContext('2d');
+  const isDark  = document.documentElement.dataset.theme === 'dark';
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending','Verified','Assigned','In Progress','Completed','Rejected'],
+      datasets: [{
+        data: [
+          {{ stats.by_status.get('pending',0) }},
+          {{ stats.by_status.get('verified',0) }},
+          {{ stats.by_status.get('assigned',0) }},
+          {{ stats.by_status.get('in_progress',0) }},
+          {{ stats.by_status.get('completed',0) }},
+          {{ stats.by_status.get('rejected',0) }}
+        ],
+        backgroundColor:['#94a3b8','#3b82f6','#a855f7','#f59e0b','#10b981','#ef4444'],
+        borderWidth:0, borderRadius:4
+      }]
+    },
+    options: {
+      responsive:true, cutout:'65%',
+      plugins:{
+        legend:{
+          position:'right',
+          labels:{ font:{size:11,family:'Inter'}, color: isDark?'#f0f6ff':'#0f172a', boxWidth:11, padding:10 }
+        }
+      }
+    }
+  });
+}
+
+/* ── Pre-Verify ───────────────────────────────────────────────────────────── */
+const SEV_COLORS_MAP = {low:'#22c55e',medium:'#fbbf24',high:'#f97316',critical:'#ef4444'};
+
+function showPreVerifyModal(reportId, currentSev, reporterId) {
+  document.getElementById('pvReportId').value         = reportId;
+  document.getElementById('pvReporterId').value       = reporterId;
+  document.getElementById('pvOriginalSeverity').value = currentSev;
+  document.getElementById('pvNewSeverity').value      = currentSev;
+  document.getElementById('pvErr').classList.add('d-none');
+  document.getElementById('pvReasonWrap').style.display   = 'none';
+  document.getElementById('pvNoChangeNote').style.display = 'none';
+  document.getElementById('pvReason').value = '';
+  pvPickSev(currentSev, SEV_COLORS_MAP[currentSev]);
+  new bootstrap.Modal(document.getElementById('preVerifyModal')).show();
+}
+
+function pvPickSev(sev, color) {
+  document.querySelectorAll('.sev-select-btn').forEach(b => {
+    b.style.borderColor = 'var(--rv-border)';
+    b.style.background  = 'transparent';
+  });
+  const btn = document.getElementById(`pvsev-${sev}`);
+  if (btn) { btn.style.borderColor = color; btn.style.background = color + '18'; }
+  document.getElementById('pvNewSeverity').value = sev;
+  const changed = sev !== document.getElementById('pvOriginalSeverity').value;
+  document.getElementById('pvReasonWrap').style.display   = changed ? 'block' : 'none';
+  document.getElementById('pvNoChangeNote').style.display = changed ? 'none'  : 'block';
+}
+
+async function doVerify() {
+  const errEl      = document.getElementById('pvErr');
+  errEl.classList.add('d-none');
+  const reportId   = document.getElementById('pvReportId').value;
+  const reporterId = document.getElementById('pvReporterId').value;
+  const newSev     = document.getElementById('pvNewSeverity').value;
+  const origSev    = document.getElementById('pvOriginalSeverity').value;
+  const reason     = document.getElementById('pvReason').value.trim();
+  const sevChanged = newSev !== origSev;
+  if (sevChanged && !reason) {
+    errEl.textContent = 'Please provide a reason for changing the severity.';
+    errEl.classList.remove('d-none'); return;
+  }
+  const pvBtn = document.getElementById('pvVerifyBtn');
+  pvBtn.disabled = true;
+  pvBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying…';
+  try {
+    if (sevChanged) {
+      const sr = await fetch(`/admin/api/reports/${reportId}/severity`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({severity:newSev, reason, notify_reporter:true, reporter_id:reporterId})
+      });
+      const sd = await sr.json();
+      if (!sd.success) {
+        errEl.textContent = sd.error || 'Failed to update severity.';
+        errEl.classList.remove('d-none');
+        pvBtn.disabled = false;
+        pvBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm & Verify';
+        return;
+      }
+    }
+    const vr = await fetch(`/admin/api/reports/${reportId}/verify`, {method:'POST'});
+    const vd = await vr.json();
+    if (vd.success) {
+      bootstrap.Modal.getInstance(document.getElementById('preVerifyModal')).hide();
+      showToast(sevChanged ? `Verified — severity changed to ${newSev}. Citizen notified.` : 'Report verified.', 'success', 'Report Verified');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      errEl.textContent = vd.error || 'Verification failed.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error.';
+    errEl.classList.remove('d-none');
+  }
+  pvBtn.disabled = false;
+  pvBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm & Verify';
+}
+
+/* ── Assign ───────────────────────────────────────────────────────────────── */
+const TEAM_COLORS_DASH   = {alpha:'#3b82f6',beta:'#f59e0b',gamma:'#f97316',delta:'#ef4444'};
+const SEVERITY_TEAM_DASH = {low:'alpha',medium:'beta',high:'gamma',critical:'delta'};
+const TEAM_NAMES_DASH    = { {% for tk, tv in teams.items() %}'{{ tk }}':'{{ tv.name }}',{% endfor %} };
+
+function showAssignModal(reportId, severity, damageType) {
+  document.getElementById('assignReportId').value = reportId;
+  document.getElementById('assignErr').classList.add('d-none');
+  document.getElementById('assignNotes').value = '';
+  const rec = SEVERITY_TEAM_DASH[severity] || 'beta';
+  document.getElementById('recSeverity').textContent = severity;
+  document.getElementById('recTeamName').textContent  = TEAM_NAMES_DASH[rec] || rec;
+  selectAssignTeam(rec);
+  new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+
+function selectAssignTeam(key) {
+  document.getElementById('selectedTeamKey').value = key;
+  document.querySelectorAll('.team-select-card').forEach(c => {
+    c.style.borderColor = 'var(--rv-border)';
+    c.style.background  = 'transparent';
+  });
+  const card  = document.getElementById(`tcard-${key}`);
+  const color = TEAM_COLORS_DASH[key] || '#3b82f6';
+  if (card) { card.style.borderColor = color; card.style.background = color + '12'; }
+}
+
+async function doAssign() {
+  const errEl    = document.getElementById('assignErr');
+  const reportId = document.getElementById('assignReportId').value;
+  const team     = document.getElementById('selectedTeamKey').value;
+  errEl.classList.add('d-none');
+  if (!team) { errEl.textContent = 'Please select a team.'; errEl.classList.remove('d-none'); return; }
+  const btn = document.getElementById('assignSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Assigning…';
+  try {
+    const r = await fetch(`/admin/api/reports/${reportId}/assign`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        team, priority: document.getElementById('assignPriority').value,
+        due_date: document.getElementById('assignDueDate').value,
+        notes: document.getElementById('assignNotes').value.trim()
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+      showToast(`Assigned to ${TEAM_NAMES_DASH[team]}!`, 'success', 'Task Created');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      errEl.textContent = d.error || 'Assignment failed.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error.';
+    errEl.classList.remove('d-none');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg"></i> Assign to Team';
+}
+
+/* ── Reject ───────────────────────────────────────────────────────────────── */
+function showRejectModal(reportId, reporterId) {
+  document.getElementById('rejectReportId').value   = reportId;
+  document.getElementById('rejectReporterId').value = reporterId || '';
+  document.getElementById('rejectReason').value     = '';
+  new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+
+async function rejectReport() {
+  const id         = document.getElementById('rejectReportId').value;
+  const reporterId = document.getElementById('rejectReporterId').value;
+  const reason     = document.getElementById('rejectReason').value.trim();
+  if (!reason) { showToast('Please provide a rejection reason.', 'warning'); return; }
+  await fetch(`/admin/api/reports/${id}/reject`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({reason, reporter_id:reporterId, notify_reporter:true})
+  });
+  bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+  showToast('Rejected. Citizen notified with reason.', 'warning', 'Report Rejected');
+  setTimeout(() => location.reload(), 1000);
+}
+
+/* ── Live socket alert ────────────────────────────────────────────────────── */
+socket.on('critical_alert', data => {
+  const el = document.createElement('div');
+  el.className = 'alert-item critical';
+  el.innerHTML = `
+    <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;margin-top:5px;flex-shrink:0"></div>
+    <div style="min-width:0">
+      <div style="font-size:12.5px;font-weight:600">🚨 ${data.damage_types || data.damage_type || 'Damage'} — CRITICAL</div>
+      <div style="font-size:11px;color:var(--rv-text-muted)">${data.location}</div>
+      <div style="font-size:11px;color:var(--rv-text-light)">Just now</div>
+    </div>`;
+  const container = document.getElementById('liveAlerts');
+  container.insertBefore(el, container.firstChild);
+});
+
+setTimeout(() => { initAdminMap(); initStatusChart(); }, 300);
+document.addEventListener('themeChange', () => { if(typeof adminMap !== 'undefined') adminMap.invalidateSize(); });
+</script>
+{% endblock %}

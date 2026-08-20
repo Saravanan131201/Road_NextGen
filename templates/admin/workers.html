@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block title %}Workers — Road NextGen{% endblock %}
+{% block page_title %}Workers{% endblock %}
+
+
+{% block extra_css %}
+/* ── Filter bar ── */
+.wk-filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+
+/* ── Avatar ── */
+.wk-av {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; color: #fff;
+}
+
+/* ── Accordion overrides ── */
+.accordion-flush .accordion-item {
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius-sm) !important;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: var(--rv-surface);
+  transition: box-shadow .2s, border-color .2s;
+}
+.accordion-flush .accordion-item:hover {
+  box-shadow: var(--rv-shadow);
+  border-color: var(--rv-primary);
+}
+.accordion-flush .accordion-button {
+  background: var(--rv-surface);
+  color: var(--rv-text);
+  box-shadow: none;
+  padding: 14px 16px;
+}
+.accordion-flush .accordion-button:not(.collapsed) {
+  background: var(--rv-surface);
+  color: var(--rv-text);
+  box-shadow: none;
+  border-bottom: 1px solid var(--rv-border);
+}
+.accordion-flush .accordion-button::after {
+  filter: var(--rv-icon-filter, none);
+}
+.accordion-flush .accordion-body {
+  background: var(--rv-surface-2);
+  padding: 16px;
+}
+
+/* ── Button inner layout ── */
+.wk-btn-inner {
+  display: grid;
+  grid-template-columns: 42px 1fr 130px 150px 120px 130px 90px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+@media (max-width: 767px) {
+  .wk-btn-inner {
+    grid-template-columns: 42px 1fr;
+  }
+  .wk-col-team,
+  .wk-col-head,
+  .wk-col-phone,
+  .wk-col-status,
+  .wk-col-added { display: none; }
+  .wk-meta-mobile { display: flex !important; }
+  .wk-table-header { display: none !important; }
+}
+.wk-meta-mobile {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+/* mobile detail rows */
+.wk-meta-row {
+  display: none;
+  font-size: 11.5px;
+  color: var(--rv-text-muted);
+  margin-top: 3px;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 767px) {
+  .wk-meta-row { display: flex; }
+}
+/* allow address to wrap fully */
+.wk-address {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+/* ── Stat grid ── */
+.wk-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+@media (max-width: 480px) {
+  .wk-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.wk-stat-box {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.wk-stat-num { font-size: 22px; font-weight: 800; line-height: 1.1; }
+.wk-stat-lbl { font-size: 11px; color: var(--rv-text-muted); margin-top: 3px; }
+
+/* ── Status chips ── */
+.chip-available { background: rgba(16,185,129,.12); color: #059669; }
+.chip-on_leave  { background: rgba(245,158,11,.12);  color: #d97706; }
+.chip-inactive  { background: rgba(148,163,184,.12); color: #64748b; }
+.status-chip {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+}
+
+/* ── Download button ── */
+.wk-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--rv-border);
+  background: var(--rv-surface);
+  color: var(--rv-text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.wk-dl-btn:hover {
+  background: var(--rv-primary);
+  color: #fff;
+  border-color: var(--rv-primary);
+}
+
+/* ── History header row ── */
+.wk-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Completion bar card ── */
+.wk-bar-wrap {
+  margin-top: 14px;
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+/* ── Table header (desktop) ── */
+.wk-table-header {
+  display: grid;
+  grid-template-columns: 42px 1fr 130px 150px 120px 130px 90px 32px;
+  gap: 12px;
+  padding: 0 16px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rv-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* ── Empty state ── */
+.wk-empty { text-align: center; padding: 72px 24px; color: var(--rv-text-muted); }
+{% endblock %}
+
+
+{% block content %}
+
+<!-- Page header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;margin:0">Daily Wage Workers</h2>
+    <p style="font-size:13px;color:var(--rv-text-muted);margin:2px 0 0">Workers managed by team heads</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="font-size:13px;color:var(--rv-text-muted)">
+      <strong>{{ total }}</strong> worker{{ 's' if total != 1 }} found
+    </div>
+  </div>
+</div>
+
+<!-- ── Filter bar ─────────────────────────────────────────────────────────── -->
+<div class="rv-card mb-4" style="padding:16px">
+  <form method="GET">
+    <div class="wk-filter-bar">
+
+      <!-- Search -->
+      <div style="flex:2;min-width:200px">
+        <label class="rv-form-label">Search by Name</label>
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:13px"></i>
+          <input type="text" name="search" value="{{ current_search }}"
+                 class="rv-form-control" style="padding-left:36px"
+                 placeholder="Worker name…"/>
+        </div>
+      </div>
+
+      <!-- Team -->
+      <div style="min-width:150px">
+        <label class="rv-form-label">Team</label>
+        <select name="team" class="rv-form-control">
+          <option value="">All Teams</option>
+          {% for tk, tv in teams.items() %}
+          <option value="{{ tk }}" {{ 'selected' if current_team == tk }}>{{ tv.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status -->
+      <div style="min-width:140px">
+        <label class="rv-form-label">Status</label>
+        <select name="status" class="rv-form-control">
+          <option value="">All Status</option>
+          <option value="available"  {{ 'selected' if current_status == 'available' }}>✅ Available</option>
+          <option value="on_leave"   {{ 'selected' if current_status == 'on_leave'  }}>⏸️ On Leave</option>
+          <option value="inactive"   {{ 'selected' if current_status == 'inactive'  }}>❌ Inactive</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;align-self:flex-end">
+        <button type="submit" class="rv-btn rv-btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+        <a href="{{ url_for('admin.workers') }}" class="rv-btn rv-btn-secondary"><i class="bi bi-x"></i> Clear</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Results count -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div style="font-size:13px;color:var(--rv-text-muted)">
+    Showing <strong>{{ workers | length }}</strong> of <strong>{{ total }}</strong> workers
+    {% if current_search %} matching "<strong>{{ current_search }}</strong>"{% endif %}
+  </div>
+</div>
+
+<!-- ── Worker list ─────────────────────────────────────────────────────────── -->
+{% if workers %}
+
+<!-- Table header (desktop only) -->
+<div class="wk-table-header">
+  <div></div>
+  <div>Worker</div>
+  <div>Team</div>
+  <div>Team Head</div>
+  <div>Phone</div>
+  <div>Status</div>
+  <div>Added</div>
+  <div></div>
+</div>
+
+<div class="accordion accordion-flush" id="workersAccordion">
+
+{% for w in workers %}
+{% set tw = teams.get(w.team, {}) %}
+{% set tc = tw.get('color', '#3b82f6') %}
+{% set head = team_heads | selectattr('team','equalto', w.team) | list | first %}
+{% set sc_map = {'available': 'chip-available', 'on_leave': 'chip-on_leave', 'inactive': 'chip-inactive'} %}
+{% set sc = sc_map.get(w.status, 'chip-inactive') %}
+{% set h = w._history %}
+{% set head_name = head.name if head else '—' %}
+{% set team_name = tw.get('name', w.team|title if w.team else '—') %}
+{% if h.sites_attended > 0 %}
+  {% set pct = ((h.completed_on_time / h.sites_attended) * 100) | round(0) | int %}
+{% else %}
+  {% set pct = 0 %}
+{% endif %}
+
+<div class="accordion-item">
+  <h2 class="accordion-header" id="heading-{{ loop.index }}">
+    <button
+      class="accordion-button collapsed"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#collapse-{{ loop.index }}"
+      aria-expanded="false"
+      aria-controls="collapse-{{ loop.index }}">
+
+      <div class="wk-btn-inner">
+
+        <!-- Avatar -->
+        {% if w.photo_url %}
+        <img src="{{ w.photo_url }}" class="wk-av" alt="{{ w.name }}" style="border:1px solid var(--rv-border)"/>
+        {% else %}
+        <div class="wk-av" style="background:linear-gradient(135deg,{{ tc }},var(--rv-accent))">
+          {{ (w.name or 'W')[0].upper() }}
+        </div>
+        {% endif %}
+
+        <!-- Name + address + mobile meta -->
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ w.name }}
+          </div>
+          <div class="wk-address" style="font-size:11px;color:var(--rv-text-muted);margin-top:2px;">
+            {{ w.address if w.address else '—' }}
+          </div>
+          <!-- mobile: team + status chips -->
+          <div class="wk-meta-mobile">
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ tc }}18;color:{{ tc }}">
+              {{ team_name }}
+            </span>
+            <span class="status-chip {{ sc }}">
+              {% if w.status == 'available' %}✅ Available
+              {% elif w.status == 'on_leave' %}⏸️ On Leave
+              {% else %}❌ Inactive{% endif %}
+            </span>
+          </div>
+          <!-- mobile: phone + team head + added on -->
+          <div class="wk-meta-row">
+            <i class="bi bi-telephone" style="font-size:10px"></i>
+            <span>{{ w.phone or '—' }}</span>
+            <span style="color:var(--rv-border)">·</span>
+            <i class="bi bi-person-badge" style="font-size:10px"></i>
+            <span>{{ head_name }}</span>
+            <span style="color:var(--rv-border)">·</span>
+            <i class="bi bi-calendar3" style="font-size:10px"></i>
+            <span>{{ w.created_at[:10] if w.created_at else '—' }}</span>
+          </div>
+        </div>
+
+        <!-- Team badge (desktop) -->
+        <div class="wk-col-team">
+          <span style="font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;background:{{ tc }}18;color:{{ tc }}">
+            {{ team_name }}
+          </span>
+        </div>
+
+        <!-- Team head (desktop) -->
+        <div class="wk-col-head" style="font-size:13px;color:var(--rv-text-secondary)">
+          {{ head_name }}
+        </div>
+
+        <!-- Phone (desktop) -->
+        <div class="wk-col-phone" style="font-size:13px;color:var(--rv-text-muted)">
+          {{ w.phone or '—' }}
+        </div>
+
+        <!-- Status (desktop) -->
+        <div class="wk-col-status">
+          <span class="status-chip {{ sc }}">
+            {% if w.status == 'available' %}✅ Available
+            {% elif w.status == 'on_leave' %}⏸️ On Leave
+            {% else %}❌ Inactive{% endif %}
+          </span>
+        </div>
+
+        <!-- Added date (desktop) -->
+        <div class="wk-col-added" style="font-size:12px;color:var(--rv-text-muted)">
+          {{ w.created_at[:10] if w.created_at else '—' }}
+        </div>
+
+      </div>
+    </button>
+  </h2>
+
+  <div id="collapse-{{ loop.index }}"
+       class="accordion-collapse collapse"
+       aria-labelledby="heading-{{ loop.index }}"
+       data-bs-parent="#workersAccordion">
+    <div class="accordion-body">
+
+      <!-- Header: title + download -->
+      <div class="wk-history-header">
+        <div style="font-size:12px;font-weight:700;color:var(--rv-text-muted);text-transform:uppercase;letter-spacing:.07em">
+          <i class="bi bi-clock-history me-1"></i>Work History
+        </div>
+        <a class="wk-dl-btn" href="{{ url_for('admin.export_worker_csv', worker_id=w._id) }}" download>
+          <i class="bi bi-download"></i> Download History
+        </a>
+      </div>
+
+      <!-- Stat boxes -->
+      <div class="wk-stat-grid">
+        <div class="wk-stat-box">
+          <div class="wk-stat-num" style="color:var(--rv-primary)">{{ h.sites_attended }}</div>
+          <div class="wk-stat-lbl"><i class="bi bi-geo-alt me-1"></i>Sites Attended</div>
+        </div>
+        <div class="wk-stat-box">
+          <div class="wk-stat-num" style="color:#059669">{{ h.completed_on_time }}</div>
+          <div class="wk-stat-lbl"><i class="bi bi-check-circle me-1"></i>Completed On Time</div>
+        </div>
+        <div class="wk-stat-box">
+          <div class="wk-stat-num" style="color:#d97706">{{ h.completed_late }}</div>
+          <div class="wk-stat-lbl"><i class="bi bi-clock me-1"></i>Completed After Due</div>
+        </div>
+        <div class="wk-stat-box">
+          <div class="wk-stat-num" style="color:#dc2626">{{ h.not_completed }}</div>
+          <div class="wk-stat-lbl"><i class="bi bi-x-circle me-1"></i>Not Completed</div>
+        </div>
+      </div>
+
+      <!-- Completion rate bar -->
+      <div class="wk-bar-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--rv-text-muted);margin-bottom:8px">
+          <span>On-time completion rate</span>
+          {% if h.sites_attended > 0 %}
+          <strong style="color:{% if pct >= 75 %}#059669{% elif pct >= 40 %}#d97706{% else %}#dc2626{% endif %}">{{ pct }}%</strong>
+          {% else %}
+          <strong style="color:var(--rv-text-muted)">N/A</strong>
+          {% endif %}
+        </div>
+        {% if h.sites_attended > 0 %}
+        <div style="height:6px;background:var(--rv-border);border-radius:99px;overflow:hidden">
+          <div style="height:100%;width:{{ pct }}%;background:{% if pct >= 75 %}#059669{% elif pct >= 40 %}#d97706{% else %}#dc2626{% endif %};border-radius:99px;transition:width .5s ease"></div>
+        </div>
+        {% else %}
+        <div style="height:6px;background:var(--rv-border);border-radius:99px"></div>
+        <div style="font-size:12px;color:var(--rv-text-muted);font-style:italic;margin-top:6px">No task assignments yet.</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endfor %}
+</div>
+
+{% else %}
+<div class="wk-empty">
+  <i class="bi bi-person-vcard" style="font-size:56px;display:block;margin-bottom:16px;color:var(--rv-text-light)"></i>
+  <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No workers found</h3>
+  <p style="font-size:14px">Try adjusting the filters or search term.</p>
+  <a href="{{ url_for('admin.workers') }}" class="rv-btn rv-btn-secondary mt-3">Clear Filters</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Accordion toggle ─────────────────────────────────────────────────────── */
+function toggleHistory(idx) {
+  const hist = document.getElementById('hist-' + idx);
+  const chev = document.getElementById('chev-' + idx);
+  const open = hist.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+</script>
+{% endblock %}

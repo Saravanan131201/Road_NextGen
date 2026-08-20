@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Road NextGen{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Severity Distribution -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="rv-card">
+      <div class="rv-card-title mb-4"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Severity Distribution</div>
+      <canvas id="severityChart" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- Damage Types -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="rv-card">
+      <div class="rv-card-title mb-4"><i class="bi bi-cpu me-2 text-primary"></i>AI Detection by Damage Type</div>
+      <canvas id="damageTypeChart" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="col-12 col-xl-4">
+    <div class="rv-card">
+      <div class="rv-card-title mb-4"><i class="bi bi-graph-up me-2 text-success"></i>Report Statistics</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+          <div style="font-size:13px;color:var(--rv-text-muted)">Total Reports</div>
+          <div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace">{{ stats.total }}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(239,68,68,.08);border-radius:var(--rv-radius-sm)">
+          <div style="font-size:13px;color:var(--rv-text-muted)">Critical Issues</div>
+          <div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#dc2626">{{ stats.critical }}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(16,185,129,.08);border-radius:var(--rv-radius-sm)">
+          <div style="font-size:13px;color:var(--rv-text-muted)">Completed Repairs</div>
+          <div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#059669">{{ stats.by_status.get('completed', 0) }}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(245,158,11,.08);border-radius:var(--rv-radius-sm)">
+          <div style="font-size:13px;color:var(--rv-text-muted)">Pending Review</div>
+          <div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#d97706">{{ stats.by_status.get('pending', 0) }}</div>
+        </div>
+        {% set total = stats.total if stats.total > 0 else 1 %}
+        {% set completed = stats.by_status.get('completed', 0) %}
+        <div style="padding:12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--rv-text-muted)">Repair Efficiency</span>
+            <span style="font-size:13px;font-weight:700">{{ ((completed / total) * 100) | round(1) }}%</span>
+          </div>
+          <div class="rv-conf-bar"><div class="rv-conf-fill" style="width:{{ ((completed / total) * 100) | round }}%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Trend -->
+  <div class="col-12">
+    <div class="rv-card">
+      <div class="rv-card-header">
+        <div>
+          <div class="rv-card-title"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Report Trend (6 Months)</div>
+          <div class="rv-card-subtitle">Monthly report volume over time</div>
+        </div>
+      </div>
+      <canvas id="trendChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Damage Hotspot Map -->
+  <div class="col-12">
+    <div class="rv-card">
+      <div class="rv-card-title mb-3"><i class="bi bi-geo-alt me-2 text-danger"></i>Damage Hotspots</div>
+      <div id="hotspotMap" class="rv-map" style="height:400px"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const isDark = () => document.documentElement.dataset.theme === 'dark';
+const textColor = () => isDark() ? '#f0f6ff' : '#0f172a';
+const mutedColor = () => isDark() ? '#7fa8c9' : '#64748b';
+const DAMAGE_DISPLAY_MAP = {
+  pothole: 'Pothole',
+  alligator_cracking: 'Alligator Cracking',
+  lateral_cracking: 'Lateral Cracking',
+  longitudinal_cracking: 'Longitudinal Cracking',
+  other: 'Other'
+};
+// Severity Chart
+const sevCtx = document.getElementById('severityChart').getContext('2d');
+const sevData = {{ severity_dist | tojson }};
+new Chart(sevCtx, {
+  type: 'doughnut',
+  data: {
+    labels: sevData.map(d => d._id || 'unknown'),
+    datasets: [{
+      data: sevData.map(d => d.count),
+      backgroundColor: ['#10b981','#f59e0b','#f97316','#ef4444'],
+      borderWidth: 0, borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, cutout: '60%',
+    plugins: { legend: { position: 'bottom', labels: { font:{size:12,family:'Inter'}, color: textColor(), padding:12 } } }
+  }
+});
+
+// Damage Type Chart
+const dtCtx = document.getElementById('damageTypeChart').getContext('2d');
+const dtData = {{ damage_dist | tojson }};
+new Chart(dtCtx, {
+  type: 'bar',
+  data: {
+    labels: dtData.map(d => DAMAGE_DISPLAY_MAP[d._id] || (d._id||'other').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())),
+    datasets: [{
+      label: 'Reports',
+      data: dtData.map(d => d.count),
+      backgroundColor: 'rgba(59,130,246,0.8)',
+      borderRadius: 6, borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: isDark() ? '#1e3048' : '#e2e8f0' }, ticks: { color: mutedColor() } },
+      y: { grid: { display: false }, ticks: { color: mutedColor(), font:{size:11} } }
+    }
+  }
+});
+
+// Trend Chart
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+const trendData = {{ monthly_trend | tojson }};
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+new Chart(trendCtx, {
+  type: 'line',
+  data: {
+    labels: trendData.map(d => `${months[(d._id.month||1)-1]} ${d._id.year}`),
+    datasets: [{
+      label: 'Reports',
+      data: trendData.map(d => d.count),
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      fill: true, tension: 0.4,
+      pointBackgroundColor: '#3b82f6',
+      pointRadius: 5, pointHoverRadius: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: isDark() ? '#1e3048' : '#e2e8f0' }, ticks: { color: mutedColor() } },
+      y: { grid: { color: isDark() ? '#1e3048' : '#e2e8f0' }, ticks: { color: mutedColor() } }
+    }
+  }
+});
+
+// Hotspot Map
+const hotMap = L.map('hotspotMap').setView([13.0827, 80.2707], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM', maxZoom:19}).addTo(hotMap);
+fetch('/api/reports/all').then(r=>r.json()).then(d=>{
+  (d.reports||[]).forEach(rep => {
+    const c = rep.location?.coordinates;
+    if (!c || !c[0]) return;
+    const clr = {low:'#10b981',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[rep.severity]||'#94a3b8';
+    const dmgLabel = rep.display_names?.length ? rep.display_names.join(', ') : (rep.damage_types||[]).map(dt=>DAMAGE_DISPLAY_MAP[dt]||dt.replace(/_/g,' ')).join(', ');
+    L.circleMarker([c[1],c[0]],{radius:rep.severity==='critical'?14:rep.severity==='high'?11:8,fillColor:clr,color:'#fff',weight:2,fillOpacity:0.85}).addTo(hotMap).bindPopup(`<b>${dmgLabel}</b><br><span style="color:${clr}">${rep.severity}</span>`);
+  });
+});
+</script>
+{% endblock %}

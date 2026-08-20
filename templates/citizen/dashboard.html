@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Road NextGen{% endblock %}
+{% block page_title %}
+  <span style="display:flex;align-items:center;gap:10px">
+    <span>Dashboard</span>
+    <span style="font-size:11px;font-weight:500;background:rgba(16,185,129,.15);color:#059669;padding:2px 10px;border-radius:20px">Live</span>
+  </span>
+{% endblock %}
+
+
+{% block extra_css %}
+
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="rv-card mb-4" style="background:linear-gradient(135deg,var(--rv-primary) 0%,var(--rv-accent) 100%);border:none;padding:28px 32px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <h2 style="color:#fff;font-size:22px;font-weight:700;margin-bottom:6px">
+        {% if now_hour < 12 %}
+          Good morning, {{ session.get('name','Citizen').split()[0] }} 👋
+        {% elif now_hour < 16 %}
+          Good afternoon, {{ session.get('name','Citizen').split()[0] }} 👋
+        {% elif now_hour < 22 %}
+          Good evening, {{ session.get('name','Citizen').split()[0] }} 👋
+        {% else %}
+          Welcome Back, {{ session.get('name','Citizen').split()[0] }} 👋
+        {% endif %}
+      </h2>
+
+      <p style="color:rgba(255,255,255,.8);font-size:14px;margin:0">
+        {% if now_hour >= 19 %}
+          For better AI detection results, it's recommended to take road damage photos during daylight hours.
+        {% else %}
+          Help make your city safer by reporting road damage.
+        {% endif %}
+      </p>
+    </div>
+
+    <a href="{{ url_for('citizen.report') }}"
+       class="rv-btn"
+       style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(10px)">
+      <i class="bi bi-camera-fill"></i> Report Damage
+    </a>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon primary"><i class="bi bi-file-earmark-text"></i></div>
+      <div>
+        <div class="rv-stat-value">{{ stats.total_reports }}</div>
+        <div class="rv-stat-label">Total Reports</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon warning"><i class="bi bi-hourglass-split"></i></div>
+      <div>
+        <div class="rv-stat-value">{{ stats.pending }}</div>
+        <div class="rv-stat-label">Pending Review</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon accent"><i class="bi bi-tools"></i></div>
+      <div>
+        <div class="rv-stat-value">{{ stats.in_progress }}</div>
+        <div class="rv-stat-label">In Progress</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card">
+      <div class="rv-stat-icon success"><i class="bi bi-check-circle"></i></div>
+      <div>
+        <div class="rv-stat-value">{{ stats.completed }}</div>
+        <div class="rv-stat-label">Completed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Nearby Hazard Map -->
+  <div class="col-12 col-lg-7">
+    <div class="rv-card">
+      <div class="rv-card-header">
+        <div>
+          <div class="rv-card-title"><i class="bi bi-map me-2 text-primary"></i>Nearby Hazards</div>
+          <div class="rv-card-subtitle">Road damage reports within 5 km</div>
+        </div>
+        <a href="{{ url_for('citizen.hazard_map') }}" class="rv-btn rv-btn-secondary rv-btn-sm">Full Map</a>
+      </div>
+      <div id="dashMap" class="rv-map" style="height:320px"></div>
+    </div>
+  </div>
+
+  <!-- Recent Reports -->
+  <div class="col-12 col-lg-5">
+    <div class="rv-card" style="height:100%">
+      <div class="rv-card-header">
+        <div>
+          <div class="rv-card-title"><i class="bi bi-clock-history me-2 text-primary"></i>My Recent Reports</div>
+        </div>
+        <a href="{{ url_for('citizen.my_reports') }}" class="rv-btn rv-btn-secondary rv-btn-sm">View All</a>
+      </div>
+      {% if reports %}
+        <div style="display:flex;flex-direction:column;gap:10px">
+          {% for r in reports %}
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border)">
+            {% if r.images and r.images.original %}
+              <img src="{{ r.images.original }}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" alt=""/>
+            {% else %}
+              <div style="width:48px;height:48px;border-radius:8px;background:var(--rv-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--rv-text-light);font-size:20px"><i class="bi bi-image"></i></div>
+            {% endif %}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }}</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:2px">{{ time_ago(r.created_at) if r.created_at else '' }}</div>
+            </div>
+            <span class="badge-status badge-status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align:center;padding:40px 20px;color:var(--rv-text-muted)">
+          <i class="bi bi-file-earmark-plus" style="font-size:40px;display:block;margin-bottom:12px;color:var(--rv-text-light)"></i>
+          <p style="font-size:14px;margin-bottom:16px">No reports yet. Help make roads safer!</p>
+          <a href="{{ url_for('citizen.report') }}" class="rv-btn rv-btn-primary rv-btn-sm">Report Damage</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="col-12">
+    <div class="rv-card">
+      <div class="rv-card-title mb-3"><i class="bi bi-lightning me-2 text-primary"></i>Quick Actions</div>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('citizen.report') }}" style="text-decoration:none">
+            <div style="padding:20px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius);text-align:center;transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='var(--rv-primary-light)'" onmouseout="this.style.borderColor='var(--rv-border)'">
+              <i class="bi bi-camera-fill" style="font-size:28px;color:var(--rv-primary-light);display:block;margin-bottom:8px"></i>
+              <div style="font-size:13px;font-weight:600">AI Detection</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:2px">Auto-detect damage</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('citizen.report') }}?tab=manual" style="text-decoration:none">
+            <div style="padding:20px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius);text-align:center;transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='var(--rv-primary-light)'" onmouseout="this.style.borderColor='var(--rv-border)'">
+              <i class="bi bi-pencil-square" style="font-size:28px;color:var(--rv-warning);display:block;margin-bottom:8px"></i>
+              <div style="font-size:13px;font-weight:600">Manual Report</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:2px">Describe damage</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('citizen.hazard_map') }}" style="text-decoration:none">
+            <div style="padding:20px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius);text-align:center;transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='var(--rv-primary-light)'" onmouseout="this.style.borderColor='var(--rv-border)'">
+              <i class="bi bi-exclamation-triangle" style="font-size:28px;color:var(--rv-danger);display:block;margin-bottom:8px"></i>
+              <div style="font-size:13px;font-weight:600">View Hazards</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:2px">See all damage</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('citizen.route_scanner') }}" style="text-decoration:none">
+            <div style="padding:20px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius);text-align:center;transition:all .2s;cursor:pointer" onmouseover="this.style.borderColor='var(--rv-primary-light)'" onmouseout="this.style.borderColor='var(--rv-border)'">
+              <i class="bi bi-signpost-split" style="font-size:28px;color:var(--rv-success);display:block;margin-bottom:8px"></i>
+              <div style="font-size:13px;font-weight:600">Route Scanner</div>
+              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:2px">Navigate safely</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dashMap = null;
+
+function initDashMap() {
+  dashMap = L.map('dashMap', {zoomControl: true}).setView([13.0827, 80.2707], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(dashMap);
+
+  const severityColors = {low:'#10b981', medium:'#f59e0b', high:'#f97316', critical:'#ef4444'};
+
+  function addMarkers(lat, lng) {
+    L.circle([lat, lng], {radius: 5000, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.05, weight: 1}).addTo(dashMap);
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '', iconSize: [14, 14],
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>'
+      })
+    }).addTo(dashMap).bindPopup('<b>Your Location</b>');
+
+    fetch(`/api/reports/nearby?lat=${lat}&lng=${lng}&radius=5`)
+      .then(r => r.json())
+      .then(d => {
+        (d.reports || []).forEach(rep => {
+          const coords = rep.location?.coordinates;
+          if (!coords) return;
+          const color = severityColors[rep.severity] || '#94a3b8';
+          const m = L.circleMarker([coords[1], coords[0]], {
+            radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9
+          }).addTo(dashMap);
+          const dmgLabel = rep.display_names?.length ? rep.display_names.join(', ') : (rep.damage_types||[]).map(dt=>dt.replace(/_/g,' ')).join(', ');
+          m.bindPopup(`<div style="font-size:13px"><b>${dmgLabel}</b><br><span style="color:${color}">${rep.severity}</span><br>${rep.location?.address||''}</div>`);
+        });
+      }).catch(() => {});
+  }
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { dashMap.setView([pos.coords.latitude, pos.coords.longitude], 14); addMarkers(pos.coords.latitude, pos.coords.longitude); },
+      () => addMarkers(13.0827, 80.2707)
+    );
+  } else {
+    addMarkers(13.0827, 80.2707);
+  }
+}
+
+// Ensure map renders after layout
+setTimeout(initDashMap, 200);
+document.addEventListener('themeChange', () => { if(dashMap) dashMap.invalidateSize(); });
+</script>
+{% endblock %}

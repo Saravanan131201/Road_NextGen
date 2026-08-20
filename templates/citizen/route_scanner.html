@@ -1,0 +1,958 @@
+{% extends "base.html" %}
+{% block title %}Route Scanner — Road NextGen{% endblock %}
+{% block page_title %}Route Scanner{% endblock %}
+
+{% block extra_css %}
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity:0; pointer-events:none;
+  }
+}
+
+/* ── Route Badges ── */
+.route-badge {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.4px;
+}
+.route-badge.fast  { background:rgba(59,130,246,.12); color:#3b82f6; }
+.route-badge.safe  { background:rgba(16,185,129,.12); color:#059669; }
+.route-badge.warn  { background:rgba(239,68,68,.12);  color:#dc2626; }
+
+/* ── Route Options ── */
+.route-option {
+  border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);
+  padding:12px 14px;cursor:pointer;transition:border-color .2s,background .2s;
+  margin-bottom:10px;
+}
+.route-option:hover   { border-color:var(--rv-primary); background:rgba(59,130,246,.04); }
+.route-option.active  { border-color:var(--rv-primary); background:rgba(59,130,246,.07); }
+.route-option.safe-active { border-color:#10b981; background:rgba(16,185,129,.07); }
+
+/* ── Stat Chips ── */
+.stat-row { display:flex;gap:8px;margin-top:8px;flex-wrap:wrap; }
+.stat-chip {
+  display:flex;align-items:center;gap:5px;padding:4px 10px;
+  background:var(--rv-surface-2,rgba(0,0,0,.04));border-radius:20px;font-size:11.5px;
+  color:var(--rv-text-muted);
+}
+
+/* ── Hazard Items ── */
+.hazard-dot {
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;
+}
+.hazard-item {
+  display:flex;align-items:flex-start;gap:8px;padding:7px 0;
+  border-bottom:1px solid var(--rv-border);font-size:12px;
+}
+.hazard-item:last-child { border-bottom:none; }
+
+/* ── Legend ── */
+.legend-dot { width:12px;height:12px;border-radius:50%;flex-shrink:0; }
+.legend-row { display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--rv-text-muted);margin-bottom:5px; }
+
+/* ── Plan Button ── */
+#planBtn { width:100%;justify-content:center; }
+#planBtn.loading { opacity:.7;pointer-events:none; }
+
+/* ── Advice Panel ── */
+.advice-panel {
+  background:rgba(245,158,11,.07);border:1.5px solid rgba(245,158,11,.3);
+  border-radius:var(--rv-radius-sm);padding:12px 14px;margin-top:10px;
+}
+.advice-panel .advice-title {
+  font-size:12.5px;font-weight:700;color:#b45309;
+  display:flex;align-items:center;gap:6px;margin-bottom:6px;
+}
+.advice-panel .advice-tip {
+  font-size:11.5px;color:var(--rv-text-muted);
+  display:flex;align-items:flex-start;gap:6px;padding:4px 0;
+}
+
+/* ── Autocomplete Dropdown ── */
+.autocomplete-wrapper { position:relative; }
+.autocomplete-dropdown {
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--rv-surface,#fff);border:1.5px solid var(--rv-border);
+  border-radius:var(--rv-radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);
+  z-index:9999;max-height:220px;overflow-y:auto;
+  display:none;
+}
+.autocomplete-dropdown.open { display:block; }
+.ac-item {
+  padding:9px 13px;font-size:12.5px;cursor:pointer;
+  display:flex;align-items:flex-start;gap:8px;
+  border-bottom:1px solid var(--rv-border);
+  transition:background .15s;
+}
+.ac-item:last-child { border-bottom:none; }
+.ac-item:hover, .ac-item.focused { background:rgba(59,130,246,.07); }
+.ac-item-icon { color:var(--rv-text-muted);flex-shrink:0;margin-top:1px;font-size:13px; }
+.ac-item-name { font-weight:600;color:var(--rv-text);line-height:1.3; }
+.ac-item-sub  { font-size:11px;color:var(--rv-text-muted);margin-top:1px; }
+
+/* ── Location search  ── */
+.loc-search-wrap { position:relative; }
+.loc-search-input { width:100%;padding:9px 38px 9px 12px;border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);background:var(--rv-surface-2);color:var(--rv-text);font-size:13.5px;font-family:inherit;outline:none;transition:all .2s; }
+.loc-search-input:focus { border-color:var(--rv-primary-light);box-shadow:0 0 0 3px var(--rv-primary-glow); }
+.loc-search-icon { position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:15px;pointer-events:none; }
+.loc-suggestions { position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);box-shadow:var(--rv-shadow-lg);z-index:9999;max-height:240px;overflow-y:auto;display:none; }
+.loc-sugg-item { padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--rv-border);color:var(--rv-text);transition:background .15s; }
+.loc-sugg-item:last-child { border-bottom:none; }
+.loc-sugg-item:hover,.loc-sugg-item.highlighted { background:var(--rv-surface-2); }
+.loc-sugg-main { font-weight:500; }
+.loc-sugg-sub { font-size:11px;color:var(--rv-text-muted);margin-top:1px; }
+
+.ac-spinner {
+  padding:10px 13px;font-size:12px;color:var(--rv-text-muted);
+  display:flex;align-items:center;gap:8px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- ── Left Panel ── -->
+  <div class="col-12 col-lg-4">
+
+    <!-- Plan Card -->
+    <div class="rv-card">
+    <div class="rv-card-title mb-3">
+       <i class="bi bi-signpost-split rv-nav-icon"></i> Scan Route for Hazards
+      </div>
+
+      <!-- FROM -->
+      <div class="f-group mb-3">
+        <label class="rv-form-label">From (Origin)</label>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div class="loc-search-wrap" style="flex:1">
+            <input type="text" id="fromInput" class="loc-search-input"
+                  placeholder="Search origin… (e.g. Anna Nagar)"
+                  autocomplete="off"
+                  oninput="onLocSearchInput('from', this.value)"
+                  onkeydown="onLocSearchKey('from', event)"/>
+            <i class="bi bi-search loc-search-icon"></i>
+            <div class="loc-suggestions" id="fromLocSuggestions"></div>
+          </div>
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="useCurrentLocation()" title="Use my GPS location">
+            <i class="bi bi-geo-alt-fill text-primary"></i>
+          </button>
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" id="pinFromBtn" onclick="startPinMode('from')" title="Pin origin on map">
+            <i class="bi bi-pin-map text-primary"></i>
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="fromAddress" class="rv-form-control" placeholder="Address (auto-filled)" style="background:var(--rv-surface-2);font-size:12px;flex:1" readonly/>
+          <button id="clearFromBtn" onclick="clearField('from')" title="Clear origin"
+                  style="display:none;background:none;border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:5px 9px;cursor:pointer;color:var(--rv-text-muted);font-size:13px;line-height:1;transition:all .2s;flex-shrink:0"
+                  onmouseover="this.style.borderColor='var(--rv-danger)';this.style.color='var(--rv-danger)'"
+                  onmouseout="this.style.borderColor='var(--rv-border)';this.style.color='var(--rv-text-muted)'">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- TO -->
+      <div class="f-group mb-4">
+        <label class="rv-form-label">To (Destination)</label>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div class="loc-search-wrap" style="flex:1">
+            <input type="text" id="toInput" class="loc-search-input"
+                  placeholder="Search destination… (e.g. T Nagar)"
+                  autocomplete="off"
+                  oninput="onLocSearchInput('to', this.value)"
+                  onkeydown="onLocSearchKey('to', event)"/>
+            <i class="bi bi-search loc-search-icon"></i>
+            <div class="loc-suggestions" id="toLocSuggestions"></div>
+          </div>
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" id="pinToBtn" onclick="startPinMode('to')" title="Pin destination on map">
+            <i class="bi bi-pin-map text-success"></i>
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="toAddress" class="rv-form-control" placeholder="Address (auto-filled)" style="background:var(--rv-surface-2);font-size:12px;flex:1" readonly/>
+          <button id="clearToBtn" onclick="clearField('to')" title="Clear destination"
+                  style="display:none;background:none;border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:5px 9px;cursor:pointer;color:var(--rv-text-muted);font-size:13px;line-height:1;transition:all .2s;flex-shrink:0"
+                  onmouseover="this.style.borderColor='var(--rv-danger)';this.style.color='var(--rv-danger)'"
+                  onmouseout="this.style.borderColor='var(--rv-border)';this.style.color='var(--rv-text-muted)'">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <button id="planBtn" class="rv-btn rv-btn-primary" onclick="planRoute()">
+        <i class="bi bi-signpost-split rv-nav-icon"></i> Scan Route
+      </button>
+    </div>
+
+    <!-- Scan Results (hidden until scanned) -->
+    <div id="routeComparison" class="rv-card mt-4" style="display:none">
+      <div class="rv-card-title mb-3">
+        <i class="bi bi-signpost-split rv-nav-icon"></i> Scan Results
+      </div>
+
+      <!-- Route Stats -->
+      <div class="route-option active" id="optFast" style="cursor:default">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;font-weight:600"><i class="bi bi-map me-1"></i>Your Route</div>
+          <span class="route-badge fast" id="routeStatusBadge">SCANNED</span>
+        </div>
+        <div class="stat-row">
+          <div class="stat-chip"><i class="bi bi-rulers" style="font-size:11px"></i><span id="fastDist">—</span></div>
+          <div class="stat-chip"><i class="bi bi-clock" style="font-size:11px"></i><span id="fastTime">—</span></div>
+          <div class="stat-chip" id="fastHazardChip" style="display:none">
+            <i class="bi bi-exclamation-triangle" style="font-size:11px;color:#dc2626"></i>
+            <span id="fastHazardCount" style="color:#dc2626">0 hazards</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hazard Advice Panel -->
+      <div id="noAlternatePanel" class="advice-panel" style="display:none">
+        <div class="advice-title">
+          <i class="bi bi-cone-striped"></i> Hazards Detected on Route
+        </div>
+        <div id="adviceTips"></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(245,158,11,.3);font-size:11.5px;color:#b45309">
+          <i class="bi bi-map me-1"></i>
+          Want to explore alternate routes?
+          <a id="gmapsExploreLink" href="#" target="_blank" style="color:#b45309;font-weight:700;text-decoration:underline">Open in Google Maps</a>
+          to find and compare alternate routes manually.
+        </div>
+      </div>
+
+      <!-- Open in Maps -->
+      <a id="openMapsBtn" href="#" target="_blank"
+         style="display:none;margin-top:8px;width:100%;justify-content:center"
+         class="rv-btn rv-btn-secondary">
+        <i class="bi bi-map"></i> Open Route in Google Maps
+      </a>
+    </div>
+
+    <!-- Hazards Panel -->
+    <div id="hazardPanel" class="rv-card mt-4" style="display:none">
+      <div class="rv-card-title mb-2">
+        <i class="bi bi-exclamation-triangle me-2 text-danger"></i>
+        Hazards on Route
+        <span id="hazardTotalBadge" class="route-badge warn ms-2">0</span>
+      </div>
+      <div id="hazardList"></div>
+    </div>
+
+    <!-- Safe Panel -->
+    <div id="safePanel" class="rv-card mt-4" style="display:none;padding:14px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#059669">
+        <i class="bi bi-shield-check-fill"></i> Route looks safe!
+      </div>
+      <p style="font-size:12px;color:var(--rv-text-muted);margin-top:4px;margin-bottom:0">
+        No significant damage detected directly on the selected route.
+      </p>
+    </div>
+
+
+  </div>
+
+  <!-- ── Map ── -->
+
+  <div class="col-12 col-lg-8">
+    <div class="rv-card" style="padding:0;overflow:hidden;position:relative">
+      <!-- Pin mode toolbar — INSIDE map card, position:absolute works here -->
+      <div id="pinToolbar" style="display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1000;background:var(--rv-surface);border:1.5px solid var(--rv-border);border-radius:30px;padding:6px 16px;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.18);font-size:12.5px;font-weight:600;white-space:nowrap">
+        <i class="bi bi-pin-map-fill text-primary"></i>
+        <span id="pinToolbarText">Click map to set Origin</span>
+        <button onclick="cancelPinMode()" style="background:none;border:none;cursor:pointer;color:var(--rv-text-muted);font-size:18px;line-height:1;padding:0 2px;margin-left:4px">&times;</button>
+      </div>
+      <!-- Floating Legend -->
+      <div id="legendToggleBtn" onclick="toggleLegend()" style="position:absolute;bottom:100px;right:10px;z-index:1000;background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:6px 10px;cursor:pointer;font-size:12px;font-weight:600;color:var(--rv-text);box-shadow:0 2px 12px rgba(0,0,0,.15);display:flex;align-items:center;gap:5px">
+        <i class="bi bi-layers"></i> Legend
+      </div>
+      <div id="legendPanel" style="position:absolute;bottom:145px;right:10px;z-index:1000;background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:185px;display:none">
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;color:var(--rv-text-muted);letter-spacing:.4px;text-transform:uppercase">Map Legend</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#ef4444"></div> Critical damage</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div> High severity</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#f59e0b"></div> Medium severity</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#10b981"></div> Low severity</div>
+        <div style="border-top:1px solid var(--rv-border);margin:7px 0"></div>
+        <div class="legend-row">
+          <div style="width:24px;height:4px;border-radius:2px;background:#3b82f6;flex-shrink:0"></div> Scanned route
+        </div>
+        <div class="legend-row">
+          <div style="width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,.15);border:2px solid rgba(239,68,68,.4);flex-shrink:0"></div> Hazard on road
+        </div>
+      </div>
+      <div id="routeMap" style="height:620px"></div>
+    </div>
+    <div class="rv-card mt-3" style="padding:12px 16px">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <i class="bi bi-info-circle text-primary" style="flex-shrink:0;margin-top:2px"></i>
+        <div style="font-size:12.5px;color:var(--rv-text-muted)">
+          Route Scanner detects hazards <strong>directly on your road segment</strong> between origin and destination.
+          Use the <i class="bi bi-pin-map"></i> pin buttons to set locations on the map.
+          Click <strong>Open Route in Google Maps</strong> for turn-by-turn navigation and to explore alternate routes.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+/* ════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════ */
+let routeMap;
+let fromCoords = null, toCoords = null;
+let allHazards = [];
+let fastRouteData = null;
+
+let fastLayer = null, bufferLayer = null, markerLayer = null;
+
+let pinMode = null;
+let pinMarkers = { from: null, to: null };
+
+const SEV = {
+  critical: { color:'#ef4444', radius:13, priority:4 },
+  high:     { color:'#f97316', radius:11, priority:3 },
+  medium:   { color:'#f59e0b', radius:9,  priority:2 },
+  low:      { color:'#10b981', radius:7,  priority:1 }
+};
+
+
+/* ════════════════════════════════════════════════════
+   LEGEND TOGGLE
+════════════════════════════════════════════════════ */
+function toggleLegend() {
+  const p = document.getElementById('legendPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ════════════════════════════════════════════════════
+   LOCATION SEARCH
+════════════════════════════════════════════════════ */
+let searchTimers = { from: null, to: null };
+let searchAborts  = { from: null, to: null };
+let suggItems     = { from: [], to: [] };
+let suggIdx       = { from: -1, to: -1 };
+
+function onLocSearchInput(field, val) {
+  clearTimeout(searchTimers[field]);
+  hideSugg(field);
+  if (!val.trim()) return;
+  searchTimers[field] = setTimeout(() => fetchLocSugg(field, val), 380);
+}
+
+async function fetchLocSugg(field, query) {
+  if (searchAborts[field]) searchAborts[field].abort();
+  searchAborts[field] = new AbortController();
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=7&addressdetails=1`,
+      { signal: searchAborts[field].signal, headers:{ 'Accept-Language':'en' } }
+    );
+    const data = await r.json();
+    suggItems[field] = data;
+    suggIdx[field]   = -1;
+    showSugg(field, data);
+  } catch(e) { if (e.name !== 'AbortError') hideSugg(field); }
+}
+
+function showSugg(field, items) {
+  const box = document.getElementById(`${field}LocSuggestions`);
+  if (!items.length) { hideSugg(field); return; }
+  box.innerHTML = items.map((item, i) => {
+    const parts = item.display_name.split(',');
+    return `<div class="loc-sugg-item" id="sugg-${field}-${i}"
+                 onclick="selectSugg('${field}',${i})"
+                 onmouseover="highlightSugg('${field}',${i})">
+      <div class="loc-sugg-main">${parts[0].trim()}</div>
+      <div class="loc-sugg-sub">${parts.slice(1,4).join(',').trim()}</div>
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function hideSugg(field) {
+  const box = document.getElementById(`${field}LocSuggestions`);
+  if (box) box.style.display = 'none';
+  suggItems[field] = []; suggIdx[field] = -1;
+}
+
+function highlightSugg(field, i) {
+  document.querySelectorAll(`#${field}LocSuggestions .loc-sugg-item`)
+    .forEach(el => el.classList.remove('highlighted'));
+  const el = document.getElementById(`sugg-${field}-${i}`);
+  if (el) el.classList.add('highlighted');
+  suggIdx[field] = i;
+}
+
+async function selectSugg(field, i) {
+  const item = suggItems[field][i];
+  if (!item) return;
+  hideSugg(field);
+  const parts = item.display_name.split(',');
+  document.getElementById(`${field}Input`).value   = parts.slice(0, 3).join(',').trim();
+  document.getElementById(`${field}Address`).value = item.display_name.split(',').slice(0, 4).join(', ');
+  const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+  if (field === 'from') fromCoords = [lat, lng];
+  else toCoords = [lat, lng];
+  placePinMarker(field, lat, lng);
+  showClearBtn(field);
+}
+
+function onLocSearchKey(field, e) {
+  const items = document.querySelectorAll(`#${field}LocSuggestions .loc-sugg-item`);
+  if (!items.length) {
+    if (e.key === 'Enter') planRoute();
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggIdx[field] = Math.min(suggIdx[field] + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('highlighted', i === suggIdx[field]));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggIdx[field] = Math.max(suggIdx[field] - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('highlighted', i === suggIdx[field]));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const idx = suggIdx[field] >= 0 ? suggIdx[field] : 0;
+    if (suggItems[field][idx]) selectSugg(field, idx);
+  } else if (e.key === 'Escape') {
+    hideSugg(field);
+  }
+}
+
+document.addEventListener('click', e => {
+  ['from', 'to'].forEach(field => {
+    const wrap = document.getElementById(`${field}Input`)?.closest('.loc-search-wrap');
+    if (wrap && !wrap.contains(e.target)) hideSugg(field);
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   PIN MODE
+════════════════════════════════════════════════════ */
+function startPinMode(field) {
+  pinMode = field;
+  const toolbar = document.getElementById('pinToolbar');
+  toolbar.style.display = 'flex';
+  document.getElementById('pinToolbarText').textContent =
+    field === 'from' ? 'Click map to set Origin' : 'Click map to set Destination';
+  routeMap.getContainer().style.cursor = 'crosshair';
+  document.getElementById('pinFromBtn').style.borderColor = field === 'from' ? 'var(--rv-primary)' : '';
+  document.getElementById('pinFromBtn').style.background  = field === 'from' ? 'rgba(59,130,246,.1)' : '';
+  document.getElementById('pinToBtn').style.borderColor   = field === 'to' ? '#10b981' : '';
+  document.getElementById('pinToBtn').style.background    = field === 'to' ? 'rgba(16,185,129,.1)' : '';
+}
+
+function cancelPinMode() {
+  pinMode = null;
+  document.getElementById('pinToolbar').style.display = 'none';
+  routeMap.getContainer().style.cursor = '';
+  document.getElementById('pinFromBtn').style.borderColor = '';
+  document.getElementById('pinFromBtn').style.background  = '';
+  document.getElementById('pinToBtn').style.borderColor   = '';
+  document.getElementById('pinToBtn').style.background    = '';
+}
+
+async function handleMapPin(latlng) {
+  if (!pinMode) return;
+  const { lat, lng } = latlng;
+  const field = pinMode;
+  cancelPinMode();
+  let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`);
+    const d = await r.json();
+    if (d.display_name) address = d.display_name.split(',').slice(0, 4).join(', ');
+  } catch(e) {}
+  document.getElementById(`${field}Input`).value   = address.split(',').slice(0, 3).join(',').trim();
+  document.getElementById(`${field}Address`).value = address;
+  if (field === 'from') fromCoords = [lat, lng];
+  else toCoords = [lat, lng];
+  placePinMarker(field, lat, lng);
+  showClearBtn(field);
+  showToast(`${field === 'from' ? 'Origin' : 'Destination'} pinned on map.`, 'success');
+}
+
+function placePinMarker(field, lat, lng) {
+  if (!routeMap) return;
+  if (pinMarkers[field]) routeMap.removeLayer(pinMarkers[field]);
+  const color = field === 'from' ? '#3b82f6' : '#10b981';
+  const label = field === 'from' ? 'A' : 'B';
+  pinMarkers[field] = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 10px ${color}80;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">${label}</div>`,
+      iconSize: [22, 22], iconAnchor: [11, 11]
+    }),
+    draggable: true
+  }).addTo(routeMap)
+    .bindPopup(`<b>${field === 'from' ? 'Origin' : 'Destination'}</b><br><span style="font-size:11px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>`);
+
+  pinMarkers[field].on('dragend', async e => {
+    const pos = e.target.getLatLng();
+    let addr = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&accept-language=en`);
+      const d = await r.json();
+      if (d.display_name) addr = d.display_name.split(',').slice(0, 4).join(', ');
+    } catch(e) {}
+    document.getElementById(`${field}Input`).value   = addr.split(',').slice(0,3).join(',').trim();
+    document.getElementById(`${field}Address`).value = addr;
+    if (field === 'from') fromCoords = [pos.lat, pos.lng];
+    else toCoords = [pos.lat, pos.lng];
+  });
+
+  routeMap.setView([lat, lng], Math.max(routeMap.getZoom(), 14));
+}
+
+/* ════════════════════════════════════════════════════
+   MAP INIT
+════════════════════════════════════════════════════ */
+function initRouteMap() {
+  routeMap = L.map('routeMap').setView([13.0827, 80.2707], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(routeMap);
+
+  routeMap.on('click', e => { if (pinMode) handleMapPin(e.latlng); });
+
+  loadHazardMarkers();
+}
+
+function loadHazardMarkers() {
+  fetch('/api/reports/all').then(r => r.json()).then(d => {
+    allHazards = (d.reports || []).filter(r => r.location?.coordinates?.[0]);
+    allHazards.forEach(rep => {
+      const [lng, lat] = rep.location.coordinates;
+      const sev = SEV[rep.severity] || SEV.medium;
+      const label = getDamageLabel(rep);
+      L.circleMarker([lat, lng], {
+        radius: sev.radius, fillColor: sev.color,
+        color:'#fff', weight:2, fillOpacity:0.85
+      }).addTo(routeMap)
+        .bindPopup(`
+          <div style="min-width:160px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px">${label}</div>
+            <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
+              background:${sev.color}22;color:${sev.color}">${rep.severity?.toUpperCase()}</span>
+            ${rep.location?.address ? `<div style="margin-top:6px;font-size:11px;color:#666">${rep.location.address}</div>` : ''}
+          </div>`);
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   GEOLOCATION
+════════════════════════════════════════════════════ */
+function useCurrentLocation() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported.', 'warning'); return; }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`);
+      const d = await r.json();
+      if (d.display_name) address = d.display_name.split(',').slice(0,4).join(', ');
+    } catch(e) {}
+    fromCoords = [lat, lng];
+    document.getElementById('fromInput').value   = address.split(',').slice(0,3).join(',').trim();
+    document.getElementById('fromAddress').value = address;
+    placePinMarker('from', lat, lng);
+    showClearBtn('from');
+    showToast('Current location set.', 'success');
+  }, () => showToast('Could not get location.', 'warning'));
+}
+
+/* ════════════════════════════════════════════════════
+   MAIN: SCAN ROUTE
+════════════════════════════════════════════════════ */
+async function planRoute() {
+  const fromVal = document.getElementById('fromInput').value.trim();
+  const toVal   = document.getElementById('toInput').value.trim();
+  if (!fromVal || !toVal) { showToast('Enter both origin and destination.', 'warning'); return; }
+
+  setBtnLoading(true);
+  resetRouteUI();
+
+  try {
+    if (!fromCoords) {
+      fromCoords = await geocodeFallback(fromVal);
+      if (!fromCoords) { showToast('Could not find origin location.', 'warning'); setBtnLoading(false); return; }
+    }
+    if (!toCoords) {
+      toCoords = await geocodeFallback(toVal);
+      if (!toCoords) { showToast('Could not find destination.', 'warning'); setBtnLoading(false); return; }
+    }
+
+    fastRouteData = await fetchOSRMRoute([fromCoords, toCoords]);
+    if (!fastRouteData) { showToast('Could not compute route.', 'warning'); setBtnLoading(false); return; }
+
+    const onRoadHazards = findHazardsOnRoute(fastRouteData.coords);
+
+    drawRoute();
+    drawHazardHighlights(onRoadHazards);
+    placeEndpointMarkers();
+    updateScanPanel(onRoadHazards);
+    updateHazardPanel(onRoadHazards);
+    updateMapsLink();
+
+    const allCoords = fastRouteData.coords.map(([lng, lat]) => [lat, lng]);
+    routeMap.fitBounds(
+      L.latLngBounds([fromCoords, toCoords, ...allCoords]).pad(0.15)
+    );
+
+    document.getElementById('routeComparison').style.display = 'block';
+
+  } catch(e) {
+    console.error(e);
+    showToast('Route scan failed. Please try again.', 'critical');
+  }
+  setBtnLoading(false);
+}
+
+/* ════════════════════════════════════════════════════
+   OSRM — single route only
+════════════════════════════════════════════════════ */
+async function fetchOSRMRoute(waypoints) {
+  const coords = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!data.routes?.[0]) return null;
+    const route = data.routes[0];
+    return {
+      coords:   route.geometry.coordinates,
+      geojson:  route.geometry,
+      distance: route.distance,
+      duration: route.duration
+    };
+  } catch { return null; }
+}
+
+/* ════════════════════════════════════════════════════
+   HAZARD DETECTION — ONLY HAZARDS ACTUALLY ON ROUTE
+════════════════════════════════════════════════════ */
+function findHazardsOnRoute(routeCoords) {
+
+  if (!routeCoords || routeCoords.length < 2) {
+    return [];
+  }
+
+  return allHazards.filter(rep => {
+
+    if (!rep.location?.coordinates) return false;
+
+    const [hLng, hLat] = rep.location.coordinates;
+
+    /*
+     * Check whether the hazard point lies directly
+     * on the actual OSRM route line.
+     */
+    for (let i = 0; i < routeCoords.length - 1; i++) {
+
+      const [lng1, lat1] = routeCoords[i];
+      const [lng2, lat2] = routeCoords[i + 1];
+
+      if (
+        pointOnSegment(hLat, hLng, lat1, lng1, lat2, lng2)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}
+
+
+/*
+ * Checks whether a hazard point is actually
+ * located on the route segment.
+ *
+ * Uses a very small tolerance only for GPS/
+ * coordinate precision — NOT a hazard radius.
+ */
+function pointOnSegment(pointLat, pointLng, lat1, lng1, lat2, lng2) {
+
+  const tolerance = 0.00001; // ~1 metre
+
+  const minLat = Math.min(lat1, lat2) - tolerance;
+  const maxLat = Math.max(lat1, lat2) + tolerance;
+  const minLng = Math.min(lng1, lng2) - tolerance;
+  const maxLng = Math.max(lng1, lng2) + tolerance;
+
+  if (pointLat < minLat ||  pointLat > maxLat || pointLng < minLng || pointLng > maxLng) {
+    return false;
+  }
+
+  const dx = lng2 - lng1;
+  const dy = lat2 - lat1;
+
+  /*
+   * Handle extremely short route segments.
+   */
+  if (Math.abs(dx) < 1e-12 && Math.abs(dy) < 1e-12) {
+    return (
+      Math.abs(pointLat - lat1) <= tolerance &&
+      Math.abs(pointLng - lng1) <= tolerance
+    );
+  }
+
+  const cross =
+    (pointLat - lat1) * dx -
+    (pointLng - lng1) * dy;
+
+  return Math.abs(cross) <= tolerance;
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ════════════════════════════════════════════════════
+   MAP DRAWING — single route line
+════════════════════════════════════════════════════ */
+function drawRoute() {
+  if (fastLayer) routeMap.removeLayer(fastLayer);
+  fastLayer = L.geoJSON(fastRouteData.geojson, {
+    style:{ color:'#3b82f6', weight:6, opacity:.85 }
+  }).addTo(routeMap);
+}
+
+function drawHazardHighlights(onRoadHazards) {
+  if (bufferLayer) routeMap.removeLayer(bufferLayer);
+  bufferLayer = L.layerGroup();
+  onRoadHazards.forEach(h => {
+    const [lng, lat] = h.location.coordinates;
+    const sev = SEV[h.severity] || SEV.medium;
+    L.circle([lat, lng], {
+      radius: 30,
+      fillColor: sev.color,
+      color: sev.color,
+      weight: 2,
+      fillOpacity: .25,
+      opacity: .6,
+      dashArray: '5,4'
+    }).addTo(bufferLayer);
+  });
+  bufferLayer.addTo(routeMap);
+}
+
+function placeEndpointMarkers() {
+  if (markerLayer) routeMap.removeLayer(markerLayer);
+  markerLayer = L.layerGroup();
+  const makePin = (color, label) => L.divIcon({
+    className:'',
+    html:`<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px ${color}80;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">${label}</div>`,
+    iconSize:[22,22], iconAnchor:[11,11]
+  });
+  L.marker(fromCoords, { icon: makePin('#3b82f6','A') }).addTo(markerLayer).bindPopup('<b>Origin</b>');
+  L.marker(toCoords,   { icon: makePin('#10b981','B') }).addTo(markerLayer).bindPopup('<b>Destination</b>');
+  markerLayer.addTo(routeMap);
+}
+
+/* ════════════════════════════════════════════════════
+   UI PANELS
+════════════════════════════════════════════════════ */
+function updateScanPanel(hazards) {
+  document.getElementById('fastDist').textContent = fmtDist(fastRouteData.distance);
+  document.getElementById('fastTime').textContent = fmtTime(fastRouteData.duration);
+
+  const badge   = document.getElementById('routeStatusBadge');
+  const chipEl  = document.getElementById('fastHazardChip');
+  const countEl = document.getElementById('fastHazardCount');
+  const noPanel = document.getElementById('noAlternatePanel');
+
+  if (hazards.length === 0) {
+    badge.textContent  = 'CLEAR';
+    badge.className    = 'route-badge safe';
+    chipEl.style.display = 'none';
+    noPanel.style.display = 'none';
+  } else {
+    badge.textContent  = 'HAZARDS FOUND';
+    badge.className    = 'route-badge warn';
+    countEl.textContent = `${hazards.length} hazard${hazards.length > 1 ? 's' : ''} on road`;
+    chipEl.style.display = 'flex';
+    noPanel.style.display = 'block';
+    renderDrivingAdvice(hazards);
+    // Update explore link
+    updateGmapsExploreLink();
+  }
+
+  document.getElementById('openMapsBtn').style.display = 'flex';
+}
+
+function renderDrivingAdvice(hazards) {
+  const tipsEl = document.getElementById('adviceTips');
+  const hasCritical = hazards.some(h => h.severity === 'critical');
+  const hasHigh     = hazards.some(h => h.severity === 'high');
+  const tips = [];
+  if (hasCritical || hasHigh) {
+    tips.push({ icon:'bi-speedometer2', text:'Reduce speed significantly — severe road damage detected. Drive at 20–30 km/h through affected sections.' });
+    tips.push({ icon:'bi-headlights',   text:'Keep hazard lights on to alert following vehicles of the road condition.' });
+    tips.push({ icon:'bi-arrows-move',  text:'Steer carefully around visible damage; avoid sudden swerving.' });
+  } else {
+    tips.push({ icon:'bi-speedometer2', text:'Slow down and drive cautiously through the damaged road sections.' });
+  }
+  tips.push({ icon:'bi-shield-check', text:'Maintain a larger following distance — vehicles ahead may brake unexpectedly.' });
+  tips.push({ icon:'bi-telephone',    text:'If damage is severe, report it via RoadVision or call your local municipal helpline.' });
+  tipsEl.innerHTML = tips.map(t =>
+    `<div class="advice-tip">
+       <i class="bi ${t.icon}" style="color:#b45309;flex-shrink:0;margin-top:1px"></i>
+       <span>${t.text}</span>
+     </div>`
+  ).join('');
+}
+
+function updateHazardPanel(hazards) {
+  const hazardPanel = document.getElementById('hazardPanel');
+  const safePanel   = document.getElementById('safePanel');
+  const listEl      = document.getElementById('hazardList');
+
+  if (hazards.length === 0) {
+    safePanel.style.display   = 'block';
+    hazardPanel.style.display = 'none';
+    return;
+  }
+  hazardPanel.style.display = 'block';
+  safePanel.style.display   = 'none';
+  document.getElementById('hazardTotalBadge').textContent = `${hazards.length}`;
+  listEl.innerHTML = hazards
+    .sort((a, b) => (SEV[b.severity]?.priority||0) - (SEV[a.severity]?.priority||0))
+    .map(h => {
+      const sev = SEV[h.severity] || SEV.medium;
+      return `<div class="hazard-item">
+        <div class="hazard-dot" style="background:${sev.color};margin-top:3px"></div>
+        <div>
+          <div style="font-weight:600;font-size:12px">${getDamageLabel(h)}</div>
+          <div style="color:var(--rv-text-muted);font-size:11px;margin-top:2px">
+            ${h.severity?.charAt(0).toUpperCase() + h.severity?.slice(1)} ·
+            ${h.location?.address || 'Location on map'}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   GOOGLE MAPS LINKS
+════════════════════════════════════════════════════ */
+function updateMapsLink() {
+  if (!fromCoords || !toCoords) return;
+  const [fLat, fLng] = fromCoords;
+  const [tLat, tLng] = toCoords;
+  // Exact route: encode the full OSRM polyline as waypoints via route coords
+  // Google Maps best-effort: use origin, a midpoint, and destination for accuracy
+  let url;
+  if (fastRouteData?.coords?.length) {
+    const mid = fastRouteData.coords[Math.floor(fastRouteData.coords.length / 2)];
+    const [mLng, mLat] = mid;
+    url = `https://www.google.com/maps/dir/${fLat.toFixed(6)},${fLng.toFixed(6)}/${mLat.toFixed(6)},${mLng.toFixed(6)}/${tLat.toFixed(6)},${tLng.toFixed(6)}`;
+  } else {
+    url = `https://www.google.com/maps/dir/${fLat.toFixed(6)},${fLng.toFixed(6)}/${tLat.toFixed(6)},${tLng.toFixed(6)}`;
+  }
+  document.getElementById('openMapsBtn').href = url;
+  document.getElementById('openMapsBtn').innerHTML =
+    `<i class="bi bi-map me-2"></i>Open Route in Google Maps`;
+}
+
+function updateGmapsExploreLink() {
+  if (!fromCoords || !toCoords) return;
+  const [fLat, fLng] = fromCoords;
+  const [tLat, tLng] = toCoords;
+  // Explore link: just origin → destination so user can pick alternate routes themselves
+  const url = `https://www.google.com/maps/dir/${fLat.toFixed(6)},${fLng.toFixed(6)}/${tLat.toFixed(6)},${tLng.toFixed(6)}`;
+  const el = document.getElementById('gmapsExploreLink');
+  if (el) el.href = url;
+}
+
+/* ════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════ */
+function getDamageLabel(rep) {
+  if (rep.display_names?.length) return rep.display_names.join(', ');
+  return (rep.damage_types || []).map(dt => dt.replace(/_/g,' ')).join(', ') || 'Road Damage';
+}
+function fmtDist(metres) {
+  if (!metres) return '—';
+  return metres >= 1000 ? `${(metres/1000).toFixed(1)} km` : `${Math.round(metres)} m`;
+}
+function fmtTime(seconds) {
+  if (!seconds) return '—';
+  const m = Math.round(seconds / 60);
+  return m >= 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m} min`;
+}
+async function geocodeFallback(query) {
+  const coordMatch = query.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+  if (coordMatch) return [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
+  const r = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
+  );
+  const d = await r.json();
+  if (!d.length) return null;
+  return [parseFloat(d[0].lat), parseFloat(d[0].lon)];
+}
+
+function resetRouteUI() {
+  document.getElementById('routeComparison').style.display  = 'none';
+  document.getElementById('hazardPanel').style.display      = 'none';
+  document.getElementById('safePanel').style.display        = 'none';
+  document.getElementById('noAlternatePanel').style.display = 'none';
+  document.getElementById('fastHazardChip').style.display   = 'none';
+  document.getElementById('openMapsBtn').style.display      = 'none';
+  document.getElementById('routeStatusBadge').textContent   = 'SCANNED';
+  document.getElementById('routeStatusBadge').className     = 'route-badge fast';
+  if (fastLayer)   { routeMap.removeLayer(fastLayer);   fastLayer   = null; }
+  if (bufferLayer) { routeMap.removeLayer(bufferLayer); bufferLayer = null; }
+  if (markerLayer) { routeMap.removeLayer(markerLayer); markerLayer = null; }
+  fastRouteData = null;
+}
+
+function setBtnLoading(state) {
+  const btn = document.getElementById('planBtn');
+  btn.classList.toggle('loading', state);
+  btn.innerHTML = state
+    ? '<span class="spinner-border spinner-border-sm me-2"></span>Scanning…'
+    : '<i class="bi bi-signpost-split rv-nav-icon"></i> Scan Route';
+}
+
+function showClearBtn(field) {
+  const btn = document.getElementById(`clear${field === 'from' ? 'From' : 'To'}Btn`);
+  if (btn) btn.style.display = 'inline-flex';
+}
+function hideClearBtn(field) {
+  const btn = document.getElementById(`clear${field === 'from' ? 'From' : 'To'}Btn`);
+  if (btn) btn.style.display = 'none';
+}
+function clearField(field) {
+  document.getElementById(`${field}Input`).value   = '';
+  document.getElementById(`${field}Address`).value = '';
+  if (field === 'from') fromCoords = null;
+  else toCoords = null;
+  if (pinMarkers[field]) {
+    routeMap.removeLayer(pinMarkers[field]);
+    pinMarkers[field] = null;
+  }
+  hideClearBtn(field);
+  if (fastRouteData) {
+    resetRouteUI();
+    showToast(`${field === 'from' ? 'Origin' : 'Destination'} cleared — please re-scan.`, 'warning');
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   BOOT
+════════════════════════════════════════════════════ */
+setTimeout(initRouteMap, 200);
+document.addEventListener('themeChange', () => { if (routeMap) routeMap.invalidateSize(); });
+</script>
+{% endblock %}

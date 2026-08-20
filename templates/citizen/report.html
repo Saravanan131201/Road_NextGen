@@ -1,0 +1,1055 @@
+{% extends "base.html" %}
+{% block title %}Report Damage — Road NextGen{% endblock %}
+{% block page_title %}Report Road Damage{% endblock %}
+
+
+
+{% block extra_css %}
+/* ── Tabs ── */
+.report-tab-bar{display:flex;background:var(--rv-surface-2);border-radius:12px;padding:5px;margin-bottom:28px;border:1px solid var(--rv-border)}
+.report-tab{flex:1;padding:12px 16px;text-align:center;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;color:var(--rv-text-muted);transition:all .2s;border:none;background:none;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.report-tab.active{background:var(--rv-surface);color:var(--rv-primary-light);box-shadow:var(--rv-shadow)}
+
+/* ── Location search ── */
+.loc-search-wrap{position:relative}
+.loc-search-input{width:100%;padding:9px 38px 9px 12px;border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);background:var(--rv-surface-2);color:var(--rv-text);font-size:13.5px;font-family:inherit;outline:none;transition:all .2s}
+.loc-search-input:focus{border-color:var(--rv-primary-light);box-shadow:0 0 0 3px var(--rv-primary-glow)}
+.loc-search-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--rv-text-muted);font-size:15px;pointer-events:none}
+.loc-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);box-shadow:var(--rv-shadow-lg);z-index:9999;max-height:240px;overflow-y:auto;display:none}
+.loc-sugg-item{padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--rv-border);color:var(--rv-text);transition:background .15s}
+.loc-sugg-item:last-child{border-bottom:none}
+.loc-sugg-item:hover,.loc-sugg-item.highlighted{background:var(--rv-surface-2)}
+.loc-sugg-main{font-weight:500}
+.loc-sugg-sub{font-size:11px;color:var(--rv-text-muted);margin-top:1px}
+.loc-source-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.loc-source-search{background:rgba(59,130,246,.12);color:#2563eb}
+.loc-source-gps{background:rgba(16,185,129,.12);color:#059669}
+.loc-source-map{background:rgba(168,85,247,.12);color:#7c3aed}
+.loc-source-none{background:var(--rv-surface-2);color:var(--rv-text-muted);border:1px solid var(--rv-border)}
+
+/* ── Detection boxes ── */
+.detection-box{border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:12px;background:var(--rv-surface-2)}
+.conf-bar{height:5px;background:var(--rv-border);border-radius:3px;overflow:hidden;margin-top:4px}
+.conf-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* ── Damage checkboxes ── */
+.dmg-checkbox{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);cursor:pointer;transition:all .2s;background:var(--rv-surface-2);margin-bottom:6px}
+.dmg-checkbox:hover,.dmg-checkbox.selected{border-color:var(--rv-primary-light);background:var(--rv-primary-glow)}
+.dmg-checkbox input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--rv-primary-light)}
+
+/* ── Severity buttons ── */
+.sev-btn-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sev-btn{padding:10px 4px;text-align:center;border:2px solid var(--rv-border);border-radius:9px;cursor:pointer;transition:all .2s;user-select:none}
+
+/* ── AI suggestion panel ── */
+.ai-suggest-panel{background:linear-gradient(135deg,rgba(59,130,246,.05),rgba(6,182,212,.05));border:1px solid rgba(59,130,246,.2);border-radius:var(--rv-radius);padding:14px 16px}
+
+/* ── Annotated image popup ── */
+.annotated-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease}
+.annotated-popup-box{background:var(--rv-surface);border-radius:var(--rv-radius);box-shadow:var(--rv-shadow-lg);max-width:680px;width:100%;overflow:hidden;animation:slideUp .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.annotated-popup-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--rv-border)}
+.annotated-popup-body{padding:18px}
+.annotated-popup-footer{padding:12px 18px;border-top:1px solid var(--rv-border);display:flex;gap:10px;justify-content:flex-end}
+
+
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto">
+
+  <!-- Tab Bar -->
+  <div class="report-tab-bar">
+    <button class="report-tab active" id="tabAI" onclick="switchTab('ai')">
+      <i class="bi bi-cpu" style="font-size:16px"></i> AI Detection
+      <span style="background:rgba(59,130,246,.15);color:var(--rv-primary-light);font-size:10px;padding:2px 7px;border-radius:20px">Auto</span>
+    </button>
+    <button class="report-tab" id="tabManual" onclick="switchTab('manual')">
+      <i class="bi bi-pencil-square" style="font-size:16px"></i> Manual Complaint
+    </button>
+  </div>
+
+  <!-- ═══════════════════ AI PANEL ═══════════════════ -->
+  <div id="panel-ai">
+    <div class="row g-4">
+
+      <!-- Upload column -->
+      <div class="col-12 col-md-6">
+        <div class="rv-card">
+          <div class="rv-card-title mb-3"><i class="bi bi-camera me-2 text-primary"></i>Upload Road Image</div>
+
+          <div class="rv-upload-zone" id="aiZone"
+               onclick="document.getElementById('aiFile').click()"
+               ondragover="dragOver(event,'aiZone')"
+               ondragleave="dragLeave(event,'aiZone')"
+               ondrop="dropFile(event,'ai')">
+            <div class="icon"><i class="bi bi-cloud-upload"></i></div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px">Drop image here</div>
+            <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:14px">JPG, PNG, HEIC · max 10 MB</div>
+            <button class="rv-btn rv-btn-primary rv-btn-sm" onclick="event.stopPropagation();document.getElementById('aiFile').click()"><i class="bi bi-folder2-open"></i> Browse</button>
+            <span style="margin:0 8px;color:var(--rv-text-light)">or</span>
+            <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="event.stopPropagation();openCam('ai')"><i class="bi bi-camera"></i> Camera</button>
+          </div>
+          <input type="file" id="aiFile" accept="image/*" style="display:none" onchange="onAIFile(this)"/>
+
+          <!-- Camera -->
+          <div id="camWrap-ai" style="display:none;margin-top:14px">
+            <video id="camStream-ai" autoplay playsinline style="width:100%;border-radius:var(--rv-radius);background:#000;max-height:240px;object-fit:cover"></video>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+              <button class="rv-btn rv-btn-primary" onclick="capturePhoto('ai')"><i class="bi bi-camera-fill"></i> Capture</button>
+              <button class="rv-btn rv-btn-secondary" onclick="closeCam('ai')">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div id="aiPreview" style="display:none;margin-top:14px">
+            <img id="aiPreviewImg" style="width:100%;border-radius:var(--rv-radius-sm);max-height:220px;object-fit:cover" alt=""/>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+              <button class="rv-btn rv-btn-primary" id="detectBtn" onclick="runDetection()"><i class="bi bi-cpu"></i> Run AI Detection</button>
+              <button class="rv-btn rv-btn-secondary rv-btn-icon" onclick="clearAI()" title="Remove"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+
+          <!-- Progress -->
+          <div id="aiProgress" style="display:none;margin-top:14px">
+            <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+              <div class="spinner-border text-primary spinner-border-sm"></div>
+              <span id="progressText" style="font-size:13px">Uploading…</span>
+            </div>
+            <div style="height:4px;background:var(--rv-border);border-radius:2px;margin-top:8px;overflow:hidden">
+              <div id="progressBar" style="height:100%;background:linear-gradient(90deg,var(--rv-primary),var(--rv-accent));border-radius:2px;width:0%;transition:width .4s"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results column -->
+      <div class="col-12 col-md-6">
+        <div class="rv-card" style="min-height:300px">
+          <div class="rv-card-title mb-3"><i class="bi bi-eye me-2 text-primary"></i>AI Detection Results</div>
+          <div id="aiResultsEmpty" style="text-align:center;padding:40px 16px;color:var(--rv-text-muted)">
+            <i class="bi bi-cpu" style="font-size:48px;display:block;margin-bottom:12px;color:var(--rv-text-light)"></i>
+            <p style="font-size:13.5px">Upload an image and tap <strong>Run AI Detection</strong> to see all detected road damage.</p>
+          </div>
+          <div id="aiResultsContent" style="display:none">
+            <div style="margin-bottom:14px">
+              <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:6px;letter-spacing:.05em">ANNOTATED IMAGE</div>
+              <img id="aiAnnotated" style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);background:#000;max-height:200px;object-fit:contain" alt=""/>
+            </div>
+            <div id="detectionBadge" style="font-size:12.5px;color:var(--rv-text-muted);margin-bottom:10px"></div>
+            <div id="detectionsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submission form (after detection) -->
+      <div class="col-12" id="aiSubmitSection" style="display:none">
+        <div class="rv-card">
+          <div class="rv-card-title mb-4"><i class="bi bi-send me-2 text-primary"></i>Review & Submit Report</div>
+          <div class="row g-3">
+
+            <div class="col-12">
+              <label class="rv-form-label">Detected Damage Types <span style="font-weight:400;color:var(--rv-text-muted)">(uncheck to remove)</span></label>
+              <div id="aiDamageTypeChecks"></div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="rv-form-label">Overall Severity <span style="font-weight:400;color:var(--rv-text-muted)">(AI estimated — editable)</span></label>
+              <select id="aiSeverity" class="rv-form-control">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="rv-form-label">AI Recommended Team</label>
+              <div id="aiTeamRec" style="padding:9px 12px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);font-size:13.5px;font-weight:600"></div>
+            </div>
+
+            <div class="col-12">
+              <label class="rv-form-label">Additional Description <span style="font-weight:400;color:var(--rv-text-muted)">(optional)</span></label>
+              <textarea id="aiDesc" class="rv-form-control" rows="2" placeholder="Any extra details…"></textarea>
+            </div>
+
+            <!-- Location -->
+            <div class="col-12">
+              <label class="rv-form-label">Location</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--rv-text-muted)">Source:</span>
+                <span class="loc-source-badge loc-source-none" id="aiLocSource">
+                  <i class="bi bi-question-circle"></i> Not set
+                </span>
+                <span style="font-size:11.5px;color:var(--rv-text-muted)">Search overrides GPS · click map to pin manually</span>
+              </div>
+              <div class="loc-search-wrap mb-2" id="aiLocSearchWrap">
+                <input type="text" id="aiLocSearch" class="loc-search-input"
+                       placeholder="Search location… (e.g. Vazhuthalambedu)"
+                       autocomplete="off"
+                       oninput="onLocSearchInput('ai', this.value)"
+                       onkeydown="onLocSearchKey('ai', event)"/>
+                <i class="bi bi-search loc-search-icon"></i>
+                <div class="loc-suggestions" id="aiLocSuggestions"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input type="text" id="aiAddress" class="rv-form-control" placeholder="Address (auto-filled)" style="flex:1;background:var(--rv-surface-2)" readonly/>
+                <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="useGPS('ai')" title="Use GPS location">
+                  <i class="bi bi-geo-alt-fill text-primary"></i> GPS
+                </button>
+                <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="clearLocation('ai')" title="Clear location">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+              <div id="aiLocMap" class="rv-map" style="height:220px"></div>
+              <input type="hidden" id="aiLat"/>
+              <input type="hidden" id="aiLng"/>
+            </div>
+
+            <div class="col-12">
+              <button class="rv-btn rv-btn-primary" id="aiSubmitBtn" onclick="submitAI()" style="width:100%;justify-content:center">
+                <i class="bi bi-send"></i> Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ MANUAL PANEL ═══════════════════ -->
+  <div id="panel-manual" style="display:none">
+    <div class="row g-4">
+
+      <!-- Photo + AI suggestion -->
+      <div class="col-12 col-md-5">
+        <div class="rv-card">
+          <div class="rv-card-title mb-3">
+            <i class="bi bi-image me-2 text-primary"></i>Upload Photo
+            <span style="font-size:11px;font-weight:600;color:var(--rv-danger);margin-left:6px">* Required</span>
+          </div>
+
+          <!-- Drop zone (same style as AI) -->
+          <div class="rv-upload-zone" id="manualZone"
+               onclick="document.getElementById('manualFile').click()"
+               ondragover="dragOver(event,'manualZone')"
+               ondragleave="dragLeave(event,'manualZone')"
+               ondrop="dropFile(event,'manual')">
+            <div class="icon"><i class="bi bi-cloud-upload"></i></div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:6px">Drop image here</div>
+            <div style="font-size:12px;color:var(--rv-text-muted);margin-bottom:12px">JPG, PNG, HEIC · max 10 MB · Required</div>
+            <button class="rv-btn rv-btn-primary rv-btn-sm" onclick="event.stopPropagation();document.getElementById('manualFile').click()"><i class="bi bi-folder2-open"></i> Browse</button>
+            <span style="margin:0 6px;color:var(--rv-text-light)">or</span>
+            <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="event.stopPropagation();openCam('manual')"><i class="bi bi-camera"></i> Camera</button>
+          </div>
+          <input type="file" id="manualFile" accept="image/*" style="display:none" onchange="onManualFile(this)"/>
+
+          <!-- Camera -->
+          <div id="camWrap-manual" style="display:none;margin-top:14px">
+            <video id="camStream-manual" autoplay playsinline style="width:100%;border-radius:var(--rv-radius);background:#000;max-height:220px;object-fit:cover"></video>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+              <button class="rv-btn rv-btn-primary" onclick="capturePhoto('manual')"><i class="bi bi-camera-fill"></i> Capture</button>
+              <button class="rv-btn rv-btn-secondary" onclick="closeCam('manual')">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div id="manualPreview" style="display:none;margin-top:12px">
+            <img id="manualPreviewImg" style="width:100%;border-radius:var(--rv-radius-sm);max-height:200px;object-fit:cover" alt=""/>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+              <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="clearManual()"><i class="bi bi-trash"></i> Remove</button>
+              <div id="manualAnalysisStatus" style="font-size:12px;color:var(--rv-text-muted);display:flex;align-items:center;gap:6px">
+                <div class="spinner-border spinner-border-sm text-primary" style="width:14px;height:14px;border-width:2px"></div>
+                Analysing image…
+              </div>
+            </div>
+          </div>
+
+          <!-- AI suggestion panel -->
+          <div id="manualAISuggest" style="display:none;margin-top:14px">
+            <div class="ai-suggest-panel">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <i class="bi bi-cpu-fill text-primary"></i>
+                  <span style="font-size:13px;font-weight:600">AI Suggestion <span style="font-weight:400;color:var(--rv-text-muted)">(your selection takes priority)</span></span>
+                </div>
+                <!-- View annotated image button -->
+                <button id="viewAnnotatedBtn" class="rv-btn rv-btn-secondary rv-btn-sm" onclick="showAnnotatedPopup()" style="display:none">
+                  <i class="bi bi-eye"></i> View Annotated
+                </button>
+              </div>
+              <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:6px">DETECTED TYPES</div>
+              <div id="suggestTypes" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+              <div style="display:flex;gap:14px;flex-wrap:wrap">
+                <div><div style="font-size:11px;color:var(--rv-text-muted)">CONFIDENCE</div><div id="suggestConf" style="font-size:14px;font-weight:700">—</div></div>
+                <div><div style="font-size:11px;color:var(--rv-text-muted)">SEVERITY</div><div id="suggestSev" style="font-size:14px;font-weight:700">—</div></div>
+                <div><div style="font-size:11px;color:var(--rv-text-muted)">DETECTIONS</div><div id="suggestCount" style="font-size:14px;font-weight:700">—</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form column -->
+      <div class="col-12 col-md-7">
+        <div class="rv-card">
+          <div class="rv-card-title mb-3"><i class="bi bi-pencil-square me-2 text-primary"></i>Damage Details</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+
+            <!-- Multi-select damage types -->
+            <div>
+              <label class="rv-form-label">Damage Type(s) * <span style="font-weight:400;color:var(--rv-text-muted)">(select all that apply)</span></label>
+              {% for key, label, color in [
+                ('pothole','Pothole','#8b5cf6'),
+                ('alligator_cracking','Alligator Cracking','#ef4444'),
+                ('lateral_cracking','Lateral Cracking','#f97316'),
+                ('longitudinal_cracking','Longitudinal Cracking','#fbbf24'),
+                ('other','Other','#94a3b8')
+              ] %}
+              <div class="dmg-checkbox" id="mdc-{{ key }}" onclick="toggleManualType('{{ key }}',this)">
+                <input type="checkbox" value="{{ key }}" id="mcb-{{ key }}" style="pointer-events:none"/>
+                <div style="width:12px;height:12px;border-radius:3px;background:{{ color }};flex-shrink:0"></div>
+                <span style="font-size:13.5px;font-weight:500">{{ label }}</span>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Severity -->
+            <div>
+              <label class="rv-form-label">Severity *</label>
+              <div class="sev-btn-grid">
+                {% for sev, emoji, color in [('low','✅','#22c55e'),('medium','⚠️','#fbbf24'),('high','🔶','#f97316'),('critical','🚨','#ef4444')] %}
+                <div class="sev-btn" id="sevbtn-{{ sev }}" onclick="selectSev('{{ sev }}','{{ color }}')">
+                  <div style="font-size:18px">{{ emoji }}</div>
+                  <div style="font-size:12px;font-weight:600;color:var(--rv-text-muted);margin-top:3px;text-transform:capitalize">{{ sev }}</div>
+                </div>
+                {% endfor %}
+              </div>
+              <input type="hidden" id="manualSev"/>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="rv-form-label">Description *</label>
+              <textarea id="manualDesc" class="rv-form-control" rows="3" placeholder="Describe the damage — size, road position, hazard level…"></textarea>
+            </div>
+
+            <!-- Location -->
+            <div>
+              <label class="rv-form-label">Location</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--rv-text-muted)">Source:</span>
+                <span class="loc-source-badge loc-source-none" id="manualLocSource">
+                  <i class="bi bi-question-circle"></i> Not set
+                </span>
+                <span style="font-size:11.5px;color:var(--rv-text-muted)">Search overrides GPS · click map to pin</span>
+              </div>
+              <div class="loc-search-wrap mb-2" id="manualLocSearchWrap">
+                <input type="text" id="manualLocSearch" class="loc-search-input"
+                       placeholder="Search location… (e.g. Vazhuthalambedu)"
+                       autocomplete="off"
+                       oninput="onLocSearchInput('manual', this.value)"
+                       onkeydown="onLocSearchKey('manual', event)"/>
+                <i class="bi bi-search loc-search-icon"></i>
+                <div class="loc-suggestions" id="manualLocSuggestions"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input type="text" id="manualAddress" class="rv-form-control" placeholder="Address (auto-filled)" style="flex:1;background:var(--rv-surface-2)" readonly/>
+                <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="useGPS('manual')">
+                  <i class="bi bi-geo-alt-fill text-primary"></i> GPS
+                </button>
+                <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="clearLocation('manual')">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+              <div id="manualLocMap" class="rv-map" style="height:220px"></div>
+              <input type="hidden" id="manualLat"/>
+              <input type="hidden" id="manualLng"/>
+            </div>
+
+            <button class="rv-btn rv-btn-primary" id="manualSubmitBtn" onclick="submitManual()" style="justify-content:center">
+              <i class="bi bi-send"></i> Submit Complaint
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Annotated Image Popup Modal (Manual section) ══ -->
+<div id="annotatedPopupOverlay" class="annotated-popup-overlay" style="display:none" onclick="closeAnnotatedPopup(event)">
+  <div class="annotated-popup-box" onclick="event.stopPropagation()">
+    <div class="annotated-popup-header">
+      <div>
+        <div style="font-size:15px;font-weight:700"><i class="bi bi-cpu-fill text-primary me-2"></i>AI Annotated Result</div>
+        <div style="font-size:12px;color:var(--rv-text-muted);margin-top:2px">Detected damage highlighted on your image</div>
+      </div>
+      <button onclick="closeAnnotatedPopup(null)" style="background:none;border:none;color:var(--rv-text-muted);font-size:20px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div class="annotated-popup-body">
+      <div class="row g-3">
+        <div class="col-12 col-sm-6">
+          <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:6px;letter-spacing:.04em">ORIGINAL</div>
+          <img id="popupOriginalImg" style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);max-height:260px;object-fit:contain;background:#000" alt=""/>
+        </div>
+        <div class="col-12 col-sm-6">
+          <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:6px;letter-spacing:.04em">AI ANNOTATED</div>
+          <img id="popupAnnotatedImg" style="width:100%;border-radius:var(--rv-radius-sm);border:1px solid var(--rv-border);max-height:260px;object-fit:contain;background:#000" alt=""/>
+        </div>
+      </div>
+      <!-- Detections summary -->
+      <div id="popupDetectionsSummary" style="margin-top:14px"></div>
+    </div>
+    <div class="annotated-popup-footer">
+      <button class="rv-btn rv-btn-secondary" onclick="closeAnnotatedPopup(null)">Close</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TEAM_NAMES   = {alpha:'Alpha Team',beta:'Beta Team',gamma:'Gamma Team',delta:'Delta Team'};
+const DMG_DISPLAY  = {pothole:'Pothole',alligator_cracking:'Alligator Cracking',lateral_cracking:'Lateral Cracking',longitudinal_cracking:'Longitudinal Cracking',other:'Other'};
+const DMG_COLORS   = {pothole:'#8b5cf6',alligator_cracking:'#ef4444',lateral_cracking:'#f97316',longitudinal_cracking:'#fbbf24',other:'#94a3b8'};
+const SEV_COLORS   = {low:'#22c55e',medium:'#fbbf24',high:'#f97316',critical:'#ef4444'};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let aiState = {file:null,originalUrl:'',originalPublicId:'',annotatedUrl:'',annotatedPublicId:'',detections:[],damageTypes:[],overallSeverity:'',recommendedTeam:''};
+
+let manualState = {file:null,uploadedUrl:'',originalPublicId:'',annotatedUrl:'',annotatedPublicId:'',aiDetections:[]};
+let manualTypes = new Set();
+
+let locState = {
+  ai:     {lat:null, lng:null, address:'', source:null},
+  manual: {lat:null, lng:null, address:'', source:null}
+};
+
+let locMaps = {};
+let camStreams = {};
+let searchTimers = {ai:null, manual:null};
+let searchAborts  = {ai:null, manual:null};
+let suggItems     = {ai:[], manual:[]};
+let suggIdx       = {ai:-1, manual:-1};
+
+// ─── Tab ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['ai','manual'].forEach(t => {
+    document.getElementById(`tab${t==='ai'?'AI':'Manual'}`).classList.toggle('active', t===tab);
+    document.getElementById(`panel-${t}`).style.display = t===tab ? 'block' : 'none';
+  });
+  if (!locMaps[tab]) setTimeout(() => initLocMap(tab), 150);
+}
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
+async function openCam(tab) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    camStreams[tab] = stream;
+    document.getElementById(`camStream-${tab}`).srcObject = stream;
+    document.getElementById(`camWrap-${tab}`).style.display = 'block';
+    document.getElementById(tab+'Zone').style.display = 'none';
+  } catch(e) { showToast('Camera access denied.','warning'); }
+}
+function closeCam(tab) {
+  if (camStreams[tab]) { camStreams[tab].getTracks().forEach(t=>t.stop()); delete camStreams[tab]; }
+  document.getElementById(`camWrap-${tab}`).style.display = 'none';
+  document.getElementById(tab+'Zone').style.display = 'block';
+}
+function capturePhoto(tab) {
+  const video = document.getElementById(`camStream-${tab}`);
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  canvas.toBlob(blob => {
+    const file = new File([blob], `cap_${Date.now()}.jpg`, {type:'image/jpeg'});
+    closeCam(tab);
+    tab==='ai' ? processAIFile(file) : processManualFile(file);
+  }, 'image/jpeg', 0.92);
+}
+
+// ─── Drag & drop ──────────────────────────────────────────────────────────────
+function dragOver(e,id)  { e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
+function dragLeave(e,id) { document.getElementById(id).classList.remove('drag-over'); }
+function dropFile(e,tab) {
+  e.preventDefault();
+  // FIX 4: manual now also supports drop
+  const zoneId = tab+'Zone';
+  document.getElementById(zoneId).classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f?.type.startsWith('image/')) tab==='ai' ? processAIFile(f) : processManualFile(f);
+}
+
+// ─── AI flow ──────────────────────────────────────────────────────────────────
+function onAIFile(input) { if(input.files[0]) processAIFile(input.files[0]); }
+function processAIFile(file) {
+  aiState.file = file;
+  document.getElementById('aiPreviewImg').src = URL.createObjectURL(file);
+  document.getElementById('aiPreview').style.display = 'block';
+  document.getElementById('aiZone').style.display = 'none';
+}
+function clearAI() {
+  aiState = {file:null,originalUrl:'',annotatedUrl:'',detections:[],damageTypes:[],overallSeverity:'',recommendedTeam:''};
+  document.getElementById('aiPreview').style.display = 'none';
+  document.getElementById('aiZone').style.display = 'block';
+  document.getElementById('aiResultsEmpty').style.display = 'block';
+  document.getElementById('aiResultsContent').style.display = 'none';
+  document.getElementById('aiSubmitSection').style.display = 'none';
+  document.getElementById('aiFile').value = '';
+}
+
+function setProgress(show, text='', pct=0) {
+  document.getElementById('aiProgress').style.display = show ? 'block' : 'none';
+  document.getElementById('detectBtn').style.display  = show ? 'none' : 'inline-flex';
+  if (show) { document.getElementById('progressText').textContent = text; document.getElementById('progressBar').style.width = pct+'%'; }
+}
+
+async function runDetection() {
+  if (!aiState.file) return;
+  setProgress(true,'Uploading image…',25);
+  const fd = new FormData();
+  fd.append('image', aiState.file);
+  try {
+    setProgress(true,'Running YOLOv11s…',60);
+    const r = await fetch('/api/ai/detect', {method:'POST',body:fd});
+    const d = await r.json();
+    if (!d.success) { setProgress(false); showToast(d.error||'Detection failed.','critical'); return; }
+    aiState.originalUrl = d.original_url; aiState.originalPublicId = d.original_public_id || '';
+    aiState.annotatedUrl = d.annotated_url; aiState.annotatedPublicId = d.annotated_public_id || '';
+    aiState.detections = d.detections; aiState.damageTypes = d.damage_types;
+    aiState.overallSeverity = d.overall_severity; aiState.recommendedTeam = d.recommended_team;
+    setProgress(true,'Processing…',90);
+    setTimeout(() => { setProgress(false); renderAIResults(d); }, 400);
+  } catch(e) { setProgress(false); showToast('Network error.','critical'); }
+}
+
+function renderAIResults(d) {
+  document.getElementById('aiResultsEmpty').style.display = 'none';
+  document.getElementById('aiResultsContent').style.display = 'block';
+  if (d.annotated_url) document.getElementById('aiAnnotated').src = d.annotated_url;
+  document.getElementById('detectionBadge').innerHTML =
+    `<strong>${d.total_detections}</strong> detection(s) across <strong>${d.damage_types.length}</strong> class(es)`;
+
+  document.getElementById('detectionsList').innerHTML = d.detections.map(det => `
+    <div class="detection-box">
+      <div style="width:14px;height:14px;border-radius:3px;background:${det.color_hex};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${det.display_name}</div>
+        <div class="conf-bar"><div class="conf-fill" style="width:${(det.confidence*100).toFixed(0)}%;background:${det.color_hex}"></div></div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${det.severity_hex}">${det.severity.toUpperCase()}</div>
+        <div style="font-size:11px;color:var(--rv-text-muted)">${(det.confidence*100).toFixed(0)}%</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('aiDamageTypeChecks').innerHTML = d.damage_types.map(dt => `
+    <div class="dmg-checkbox selected" id="aidc-${dt}" onclick="toggleAIType('${dt}',this)">
+      <input type="checkbox" id="aicb-${dt}" value="${dt}" checked style="pointer-events:none;width:16px;height:16px;accent-color:var(--rv-primary-light)"/>
+      <div style="width:12px;height:12px;border-radius:3px;background:${DMG_COLORS[dt]||'#94a3b8'};flex-shrink:0"></div>
+      <span style="font-size:13.5px;font-weight:500">${DMG_DISPLAY[dt]||dt}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--rv-text-muted)">${d.detections.filter(x=>x.damage_type===dt).length} Detection(s)</span>
+    </div>`).join('');
+
+  document.getElementById('aiSeverity').value = d.overall_severity;
+  document.getElementById('aiTeamRec').textContent = `${TEAM_NAMES[d.recommended_team]||d.recommended_team} (AI recommended)`;
+
+  document.getElementById('aiSubmitSection').style.display = 'block';
+  if (locMaps['ai']) {
+    setTimeout(() => {
+      locMaps['ai'].map.invalidateSize();
+      const loc = locState['ai'];
+      if (loc.lat && loc.lng) {
+        locMaps['ai'].map.setView([loc.lat, loc.lng], 16);
+        placeMapMarker('ai', loc.lat, loc.lng);
+      }
+    }, 150);
+  } else {
+    setTimeout(() => initLocMap('ai'), 150);
+  }
+
+  if (!locState.ai.source) autoGPS('ai');
+
+  showToast(`${d.total_detections} damage(s) detected!`,'success','AI Detection Complete');
+  document.getElementById('aiSubmitSection').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function toggleAIType(dt, el) {
+  const cb = document.getElementById(`aicb-${dt}`);
+  cb.checked = !cb.checked;
+  el.classList.toggle('selected', cb.checked);
+  el.style.borderColor = cb.checked ? 'var(--rv-primary-light)' : 'var(--rv-border)';
+}
+
+// ─── Manual flow ──────────────────────────────────────────────────────────────
+function onManualFile(input) { if(input.files[0]) processManualFile(input.files[0]); }
+
+function processManualFile(file) {
+  manualState.file = file;
+  manualState.uploadedUrl = '';
+  manualState.annotatedUrl = '';
+  manualState.aiDetections = [];
+
+  document.getElementById('manualPreviewImg').src = URL.createObjectURL(file);
+  document.getElementById('manualPreview').style.display = 'block';
+  document.getElementById('manualZone').style.display = 'none';
+
+  // Show analysis status spinner
+  const statusEl = document.getElementById('manualAnalysisStatus');
+  statusEl.style.display = 'flex';
+  statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" style="width:14px;height:14px;border-width:2px"></div> Analysing image…';
+
+  // Hide previous suggestion panel
+  document.getElementById('manualAISuggest').style.display = 'none';
+  document.getElementById('viewAnnotatedBtn').style.display = 'none';
+
+  runManualAISuggest(file);
+}
+
+function clearManual() {
+  manualState = {file:null,uploadedUrl:'',annotatedUrl:'',aiDetections:[]};
+  document.getElementById('manualPreview').style.display = 'none';
+  document.getElementById('manualZone').style.display = 'block';
+  document.getElementById('manualAISuggest').style.display = 'none';
+  document.getElementById('viewAnnotatedBtn').style.display = 'none';
+  document.getElementById('manualFile').value = '';
+}
+
+// FIX 1 + FIX 4: store annotated URL and show popup after AI analysis
+async function runManualAISuggest(file) {
+  const panel = document.getElementById('manualAISuggest');
+  const statusEl = document.getElementById('manualAnalysisStatus');
+
+  panel.style.display = 'block';
+  document.getElementById('suggestTypes').innerHTML =
+    '<span style="font-size:12px;color:var(--rv-text-muted)">Analysing…</span>';
+
+  const fd = new FormData();
+  fd.append('image', file);
+
+  try {
+    const r = await fetch('/api/ai/detect', {method:'POST',body:fd});
+    const d = await r.json();
+
+    if (d.success) {
+      // FIX 1: store both URLs
+      manualState.uploadedUrl  = d.original_url;
+      manualState.annotatedUrl = d.annotated_url;   // ← was missing before
+      manualState.aiDetections = d.detections || [];
+
+      document.getElementById('suggestTypes').innerHTML =
+        (d.damage_types||[]).map(dt =>
+          `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;background:${DMG_COLORS[dt]||'#94a3b8'}18;color:${DMG_COLORS[dt]||'#94a3b8'};border:1px solid ${DMG_COLORS[dt]||'#94a3b8'}40">
+            <span style="width:7px;height:7px;border-radius:50%;background:${DMG_COLORS[dt]||'#94a3b8'}"></span>${DMG_DISPLAY[dt]||dt}
+          </span>`
+        ).join('') || '<span style="font-size:12px;color:var(--rv-text-muted)">None detected</span>';
+
+      document.getElementById('suggestConf').textContent  = d.primary_confidence ? `${(d.primary_confidence*100).toFixed(0)}%` : '—';
+      document.getElementById('suggestSev').textContent   = d.overall_severity || '—';
+      document.getElementById('suggestCount').textContent = d.total_detections || '0';
+
+      // FIX 4: show "View Annotated" button and auto-popup
+      if (d.annotated_url) {
+        document.getElementById('viewAnnotatedBtn').style.display = 'inline-flex';
+        // auto-show popup
+        openAnnotatedPopup(d.original_url, d.annotated_url, d.detections||[], d.damage_types||[]);
+      }
+
+      statusEl.style.display = 'none';
+    } else {
+      document.getElementById('suggestTypes').innerHTML = '<span style="font-size:12px;color:var(--rv-text-muted)">Analysis failed</span>';
+      statusEl.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> Analysis failed';
+    }
+  } catch(e) {
+    document.getElementById('suggestTypes').innerHTML = '<span style="font-size:12px;color:var(--rv-text-muted)">AI unavailable</span>';
+    statusEl.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> AI unavailable';
+  }
+}
+
+// FIX 4: Annotated popup logic
+function openAnnotatedPopup(originalUrl, annotatedUrl, detections, damageTypes) {
+  document.getElementById('popupOriginalImg').src   = originalUrl  || '';
+  document.getElementById('popupAnnotatedImg').src  = annotatedUrl || '';
+
+  // Build detections summary
+  const summaryEl = document.getElementById('popupDetectionsSummary');
+  if (detections && detections.length) {
+    summaryEl.innerHTML = `
+      <div style="font-size:11px;font-weight:600;color:var(--rv-text-muted);margin-bottom:8px;letter-spacing:.04em">DETECTED DAMAGE (${detections.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${detections.map(det => `
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);background:var(--rv-surface-2);font-size:12px">
+            <div style="width:10px;height:10px;border-radius:2px;background:${det.color_hex};flex-shrink:0"></div>
+            <span style="font-weight:600">${det.display_name}</span>
+            <span style="color:var(--rv-text-muted)">${(det.confidence*100).toFixed(0)}%</span>
+            <span style="font-weight:700;color:${det.severity_hex||'var(--rv-text-muted)'}">${det.severity.toUpperCase()}</span>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    summaryEl.innerHTML = '<div style="font-size:13px;color:var(--rv-text-muted)">No specific damage detected by AI.</div>';
+  }
+
+  document.getElementById('annotatedPopupOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function showAnnotatedPopup() {
+  if (manualState.uploadedUrl || manualState.annotatedUrl) {
+    openAnnotatedPopup(manualState.uploadedUrl, manualState.annotatedUrl, manualState.aiDetections, []);
+  }
+}
+
+function closeAnnotatedPopup(e) {
+  if (e && e.target !== document.getElementById('annotatedPopupOverlay')) return;
+  document.getElementById('annotatedPopupOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function toggleManualType(key, el) {
+  const cb = document.getElementById(`mcb-${key}`);
+  cb.checked = !cb.checked;
+  cb.checked ? manualTypes.add(key) : manualTypes.delete(key);
+  el.classList.toggle('selected', cb.checked);
+}
+
+function selectSev(sev, color) {
+  document.querySelectorAll('.sev-btn').forEach(b => { b.style.borderColor='var(--rv-border)'; b.style.background='transparent'; });
+  const btn = document.getElementById(`sevbtn-${sev}`);
+  if (btn) { btn.style.borderColor=color; btn.style.background=color+'18'; }
+  document.getElementById('manualSev').value = sev;
+}
+
+// ─── LOCATION ENGINE ──────────────────────────────────────────────────────────
+function setLocState(tab, lat, lng, address, source) {
+  locState[tab] = {lat, lng, address, source};
+  document.getElementById(`${tab}Lat`).value    = lat     || '';
+  document.getElementById(`${tab}Lng`).value    = lng     || '';
+  document.getElementById(`${tab}Address`).value = address || '';
+
+  const badge    = document.getElementById(`${tab}LocSource`);
+  const badgeCls = {search:'loc-source-search',gps:'loc-source-gps',map:'loc-source-map',null:'loc-source-none'};
+  const icons    = {search:'bi-search',gps:'bi-geo-alt-fill',map:'bi-pin-map-fill'};
+  const labels   = {search:'Search selected',gps:'GPS auto-detected',map:'Map pin'};
+  badge.className = `loc-source-badge ${badgeCls[source]||'loc-source-none'}`;
+  badge.innerHTML = source
+    ? `<i class="bi ${icons[source]}"></i> ${labels[source]}`
+    : '<i class="bi bi-question-circle"></i> Not set';
+
+  if (locMaps[tab] && lat && lng) {
+    placeMapMarker(tab, lat, lng);
+    locMaps[tab].map.setView([lat,lng], 16);
+  }
+}
+
+async function reverseGeo(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`);
+    const d = await r.json();
+    return d.display_name?.split(',').slice(0,4).join(', ') || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch(e) {
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+function useGPS(tab) {
+  if (!navigator.geolocation) { showToast('Geolocation not supported.','warning'); return; }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const {latitude:lat, longitude:lng} = pos.coords;
+    const address = await reverseGeo(lat, lng);
+    setLocState(tab, lat, lng, address, 'gps');
+    showToast('GPS location set.','success');
+  }, () => showToast('Could not get GPS location.','warning'));
+}
+
+async function autoGPS(tab) {
+  if (locState[tab].source) return;
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    if (locState[tab].source && locState[tab].source !== 'gps') return;
+    const {latitude:lat, longitude:lng} = pos.coords;
+    const address = await reverseGeo(lat, lng);
+    setLocState(tab, lat, lng, address, 'gps');
+  }, () => {});
+}
+
+function clearLocation(tab) {
+  setLocState(tab, null, null, '', null);
+  document.getElementById(`${tab}LocSearch`).value = '';
+  if (locMaps[tab]?.marker) { locMaps[tab].map.removeLayer(locMaps[tab].marker); locMaps[tab].marker = null; }
+}
+
+// ── Nominatim search ──────────────────────────────────────────────────────────
+function onLocSearchInput(tab, val) {
+  clearTimeout(searchTimers[tab]);
+  hideSugg(tab);
+  if (!val.trim()) return;
+  searchTimers[tab] = setTimeout(() => fetchLocSugg(tab, val), 380);
+}
+
+async function fetchLocSugg(tab, query) {
+  if (searchAborts[tab]) searchAborts[tab].abort();
+  searchAborts[tab] = new AbortController();
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=7&addressdetails=1`,
+      {signal: searchAborts[tab].signal, headers:{'Accept-Language':'en'}}
+    );
+    const data = await r.json();
+    suggItems[tab] = data;
+    suggIdx[tab]   = -1;
+    showSugg(tab, data);
+  } catch(e) { if (e.name !== 'AbortError') hideSugg(tab); }
+}
+
+function showSugg(tab, items) {
+  const box = document.getElementById(`${tab}LocSuggestions`);
+  if (!items.length) { hideSugg(tab); return; }
+  box.innerHTML = items.map((item,i) => {
+    const parts = item.display_name.split(',');
+    return `<div class="loc-sugg-item" id="sugg-${tab}-${i}"
+                 onclick="selectSugg('${tab}',${i})"
+                 onmouseover="highlightSugg('${tab}',${i})">
+      <div class="loc-sugg-main">${parts[0].trim()}</div>
+      <div class="loc-sugg-sub">${parts.slice(1,4).join(',').trim()}</div>
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function hideSugg(tab) {
+  const box = document.getElementById(`${tab}LocSuggestions`);
+  if (box) box.style.display = 'none';
+  suggItems[tab] = []; suggIdx[tab] = -1;
+}
+
+function highlightSugg(tab, i) {
+  document.querySelectorAll(`#${tab}LocSuggestions .loc-sugg-item`).forEach(el => el.classList.remove('highlighted'));
+  const el = document.getElementById(`sugg-${tab}-${i}`);
+  if (el) el.classList.add('highlighted');
+  suggIdx[tab] = i;
+}
+
+async function selectSugg(tab, i) {
+  const item = suggItems[tab][i];
+  if (!item) return;
+  hideSugg(tab);
+  document.getElementById(`${tab}LocSearch`).value =
+    item.display_name.split(',').slice(0,3).join(',').trim();
+  const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+  setLocState(tab, lat, lng, item.display_name.split(',').slice(0,4).join(', '), 'search');
+}
+
+function onLocSearchKey(tab, e) {
+  const items = document.querySelectorAll(`#${tab}LocSuggestions .loc-sugg-item`);
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggIdx[tab] = Math.min(suggIdx[tab]+1, items.length-1);
+    items.forEach((el,i) => el.classList.toggle('highlighted', i===suggIdx[tab]));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggIdx[tab] = Math.max(suggIdx[tab]-1, 0);
+    items.forEach((el,i) => el.classList.toggle('highlighted', i===suggIdx[tab]));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const idx = suggIdx[tab] >= 0 ? suggIdx[tab] : 0;
+    if (suggItems[tab][idx]) selectSugg(tab, idx);
+  } else if (e.key === 'Escape') {
+    hideSugg(tab);
+  }
+}
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+function initLocMap(tab) {
+  const mapEl = document.getElementById(`${tab}LocMap`);
+  if (!mapEl) return;
+  const map = L.map(mapEl).setView([13.0827, 80.2707], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              {attribution:'© OSM', maxZoom:19}).addTo(map);
+
+  locMaps[tab] = {map, marker:null};
+
+  map.on('click', async e => {
+    const {lat, lng} = e.latlng;
+    const address = await reverseGeo(lat, lng);
+    if (locState[tab].source !== 'search') {
+      setLocState(tab, lat, lng, address, 'map');
+      document.getElementById(`${tab}LocSearch`).value = '';
+    } else {
+      if (confirm('Override searched location with map pin?')) {
+        setLocState(tab, lat, lng, address, 'map');
+        document.getElementById(`${tab}LocSearch`).value = '';
+      }
+    }
+  });
+
+  autoGPS(tab);
+}
+
+function placeMapMarker(tab, lat, lng) {
+  if (!locMaps[tab]) return;
+  const {map} = locMaps[tab];
+  if (locMaps[tab].marker) map.removeLayer(locMaps[tab].marker);
+  const src   = locState[tab].source;
+  const color = src==='search' ? '#3b82f6' : src==='gps' ? '#10b981' : '#8b5cf6';
+  locMaps[tab].marker = L.marker([lat,lng], {
+    icon: L.divIcon({
+      className:'',
+      html:`<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 10px ${color}80"></div>`,
+      iconSize:[18,18], iconAnchor:[9,9]
+    })
+  }).addTo(map);
+}
+
+document.addEventListener('click', e => {
+  ['ai','manual'].forEach(tab => {
+    const wrap = document.getElementById(`${tab}LocSearchWrap`);
+    if (wrap && !wrap.contains(e.target)) hideSugg(tab);
+  });
+});
+
+// ─── Submit AI ────────────────────────────────────────────────────────────────
+async function submitAI() {
+  const selectedTypes = Array.from(
+    document.querySelectorAll('#aiDamageTypeChecks input[type=checkbox]:checked')
+  ).map(cb => cb.value);
+  if (!selectedTypes.length) { showToast('Select at least one damage type.','warning'); return; }
+
+  const loc = locState.ai;
+  if (!loc.lat || !loc.lng) { showToast('Set location — search, use GPS, or click the map.','warning'); return; }
+
+  const btn = document.getElementById('aiSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting…';
+
+  try {
+    const r = await fetch('/api/reports', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        report_type:   'ai',
+        damage_type:   selectedTypes[0],
+        damage_types:  selectedTypes,
+        display_names: selectedTypes.map(dt => DMG_DISPLAY[dt]||dt),
+        severity:      document.getElementById('aiSeverity').value,
+        description:   document.getElementById('aiDesc').value,
+        original_url:          aiState.originalUrl,
+        original_public_id:    aiState.originalPublicId || "",
+        annotated_url:         aiState.annotatedUrl,
+        annotated_public_id:   aiState.annotatedPublicId || "",
+        coordinates:   [parseFloat(loc.lng), parseFloat(loc.lat)],
+        address:       loc.address,
+        ai_results:    {detections: aiState.detections, total_detections: aiState.detections.length}
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast('Report submitted!','success','Report Filed');
+      setTimeout(() => window.location.href='/citizen/my-reports', 1400);
+    } else {
+      showToast(d.error||'Submission failed.','critical');
+      btn.disabled=false; btn.innerHTML='<i class="bi bi-send"></i> Submit Report';
+    }
+  } catch(e) {
+    showToast('Network error.','critical');
+    btn.disabled=false; btn.innerHTML='<i class="bi bi-send"></i> Submit Report';
+  }
+}
+
+// ─── Submit Manual ────────────────────────────────────────────────────────────
+async function submitManual() {
+  // FIX 4: Image is now mandatory
+  if (!manualState.file) {
+    showToast('Please upload a photo of the damage — it is required.','warning');
+    document.getElementById('manualZone').style.borderColor = 'var(--rv-danger)';
+    setTimeout(() => document.getElementById('manualZone').style.borderColor = '', 2500);
+    return;
+  }
+
+  const types = Array.from(manualTypes);
+  if (!types.length)  { showToast('Select at least one damage type.','warning'); return; }
+  const sev = document.getElementById('manualSev').value;
+  if (!sev)           { showToast('Select severity level.','warning'); return; }
+  const desc = document.getElementById('manualDesc').value.trim();
+  if (!desc)          { showToast('Add a description.','warning'); return; }
+
+  const loc = locState.manual;
+  if (!loc.lat || !loc.lng) { showToast('Set location — search, use GPS, or click the map.','warning'); return; }
+
+  // FIX 1: Use already-uploaded URLs (from AI background analysis) — no extra upload needed
+  let originalUrl  = manualState.uploadedUrl;
+  let annotatedUrl = manualState.annotatedUrl;  // ← now correctly stored
+
+  // Fallback: if AI analysis somehow didn't run yet, upload now
+  if (manualState.file && !originalUrl) {
+    try {
+      const fd = new FormData();
+      fd.append('image', manualState.file);
+      const r = await fetch('/api/ai/detect',{method:'POST',body:fd});
+      const d = await r.json();
+      if (d.success) {
+          originalUrl  = d.original_url;
+          annotatedUrl = d.annotated_url;
+          manualState.originalPublicId  = d.original_public_id || '';
+          manualState.annotatedPublicId = d.annotated_public_id || '';
+        }
+    } catch(e) {}
+  }
+
+  const btn = document.getElementById('manualSubmitBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Submitting…';
+
+  try {
+    const r = await fetch('/api/reports', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        report_type:   'manual',
+        damage_type:   types[0],
+        damage_types:  types,
+        display_names: types.map(dt => DMG_DISPLAY[dt]||dt),
+        severity:      sev,
+        description:   desc,
+        original_url:          originalUrl,
+        original_public_id:    manualState.originalPublicId || "",
+        annotated_url:         annotatedUrl,
+        annotated_public_id:   manualState.annotatedPublicId || "",
+        coordinates:   [parseFloat(loc.lng), parseFloat(loc.lat)],
+        address:       loc.address
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast('Report submitted!','success','Complaint Filed');
+      setTimeout(() => window.location.href='/citizen/my-reports', 1400);
+    } else {
+      showToast(d.error||'Submission failed.','critical');
+      btn.disabled=false; btn.innerHTML='<i class="bi bi-send"></i> Submit Complaint';
+    }
+  } catch(e) {
+    showToast('Network error.','critical');
+    btn.disabled=false; btn.innerHTML='<i class="bi bi-send"></i> Submit Complaint';
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initLocMap('ai');
+  if (new URLSearchParams(window.location.search).get('tab') === 'manual') {
+    switchTab('manual');
+    initLocMap('manual');
+  }
+});
+</script>
+{% endblock %}

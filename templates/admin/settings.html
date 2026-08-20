@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Settings — Road NextGen{% endblock %}
+{% block page_title %}Admin Settings{% endblock %}
+
+{% block extra_css %}
+.avatar-upload-wrap{position:relative;width:90px;height:90px;margin:0 auto 16px;cursor:pointer}
+.avatar-upload-wrap img,.avatar-upload-wrap .avatar-initials{width:90px;height:90px;border-radius:50%;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--rv-primary),var(--rv-accent))}
+.avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;color:#fff;font-size:11px;font-weight:600;gap:3px}
+.avatar-upload-wrap:hover .avatar-overlay{opacity:1}
+.avatar-overlay i{font-size:18px}
+.avatar-uploading{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+.avatar-uploading .spinner-border{width:24px;height:24px;color:#fff;border-width:2.5px}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-md-4">
+    <div class="rv-card" style="text-align:center">
+
+      <!-- ── Avatar with upload overlay ── -->
+      <div class="avatar-upload-wrap" onclick="document.getElementById('avatarFileInput').click()"
+           title="Click to update photo">
+
+        {% if user.avatar %}
+          <img id="avatarImg" src="{{ user.avatar }}" alt="Avatar"/>
+        {% else %}
+          <div class="avatar-initials" id="avatarInitials">{{ (user.name or 'A')[0].upper() }}</div>
+          <!-- Hidden img tag, shown after first upload -->
+          <img id="avatarImg" src="" alt="Avatar" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover"/>
+        {% endif %}
+
+        <div class="avatar-overlay">
+          <i class="bi bi-camera"></i>
+          Change Photo
+        </div>
+        <div class="avatar-uploading" id="avatarSpinner">
+          <div class="spinner-border"></div>
+        </div>
+      </div>
+
+      <!-- Hidden file input -->
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none"
+             onchange="handleAvatarChange(event)"/>
+
+      <h3 style="font-size:17px;font-weight:700">{{ user.name or 'Admin' }}</h3>
+      <div style="font-size:13px;color:var(--rv-text-muted)">{{ user.email or '—' }}</div>
+      <span style="margin-top:10px;display:inline-block;font-size:11px;background:rgba(168,85,247,.12);color:#7c3aed;padding:3px 12px;border-radius:20px;font-weight:600">
+        <i class="bi bi-building me-1"></i>Municipality Admin
+      </span>
+
+      <!-- Upload hint -->
+      <div style="margin-top:12px;font-size:11px;color:var(--rv-text-light)">
+        <i class="bi bi-info-circle me-1"></i>JPG, PNG or WEBP · Max 2 MB
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-8">
+    <div class="rv-card mb-4">
+      <div class="rv-card-title mb-4"><i class="bi bi-shield-lock me-2 text-primary"></i>Change Password</div>
+      <form onsubmit="changePassword(event)">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="rv-form-label">Current Password</label>
+            <input type="password" id="currentPw" class="rv-form-control"
+                   placeholder="Current password" required/>
+          </div>
+          <div class="col-md-6">
+            <label class="rv-form-label">New Password</label>
+            <input type="password" id="newPw" class="rv-form-control"
+                   placeholder="Min. 8 characters" required minlength="8"/>
+          </div>
+          <div class="col-md-6">
+            <label class="rv-form-label">Confirm New Password</label>
+            <input type="password" id="confirmPw" class="rv-form-control"
+                   placeholder="Repeat new password" required/>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="rv-btn rv-btn-primary">
+              <i class="bi bi-key"></i> Update Password
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="rv-card mb-4">
+      <div class="rv-card-title mb-4"><i class="bi bi-palette me-2 text-primary"></i>Display Preferences</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm)">
+        <div>
+          <div style="font-size:13.5px;font-weight:600">Dark Mode</div>
+          <div style="font-size:12px;color:var(--rv-text-muted)">Switch between light and dark theme</div>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="dmToggle"
+                 onchange="toggleTheme()" style="width:44px;height:22px;cursor:pointer"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="rv-card">
+      <div class="rv-card-title mb-3"><i class="bi bi-info-circle me-2 text-primary"></i>System Info</div>
+      {% for k, v in [('Version','Road NextGen v2.0'),('AI Engine','YOLOv11s'),('Map Provider','OpenStreetMap + Leaflet'),('Auth','Google OAuth 2.0 + Password')] %}
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rv-border);font-size:13px">
+        <span style="color:var(--rv-text-muted)">{{ k }}</span>
+        <span style="font-weight:600">{{ v }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Avatar upload ──────────────────────────────────────── */
+async function handleAvatarChange(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Photo must be under 2 MB.', 'warning');
+    evt.target.value = '';
+    return;
+  }
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowed.includes(file.type)) {
+    showToast('Only JPG, PNG or WEBP files are allowed.', 'warning');
+    evt.target.value = '';
+    return;
+  }
+
+  // Show local preview immediately for snappy feel
+  const localUrl = URL.createObjectURL(file);
+  _showAvatarPreview(localUrl);
+
+  // Show spinner over avatar
+  const spinner = document.getElementById('avatarSpinner');
+  spinner.style.display = 'flex';
+
+  // Read as base64
+  const b64 = await _toBase64(file);
+
+  try {
+    const r = await fetch('/admin/api/update-avatar', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ photo_b64: b64 })
+    });
+    const d = await r.json();
+
+    if (d.success) {
+      // Replace local blob with the real Cloudinary URL
+      _showAvatarPreview(d.avatar_url);
+      showToast('Profile photo updated!', 'success');
+    } else {
+      showToast(d.error || 'Upload failed.', 'critical');
+      // Revert to previous state — reload is simplest
+      setTimeout(() => location.reload(), 1500);
+    }
+  } catch(e) {
+    showToast('Network error. Please try again.', 'critical');
+    setTimeout(() => location.reload(), 1500);
+  } finally {
+    spinner.style.display = 'none';
+    evt.target.value = '';          // allow re-selecting same file
+  }
+}
+
+function _showAvatarPreview(url) {
+  const img       = document.getElementById('avatarImg');
+  const initials  = document.getElementById('avatarInitials');
+  img.src         = url;
+  img.style.display = 'block';
+  if (initials) initials.style.display = 'none';
+}
+
+function _toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = e => resolve(e.target.result);
+    r.onerror = () => reject(new Error('FileReader error'));
+    r.readAsDataURL(file);
+  });
+}
+
+/* ── Password change ────────────────────────────────────── */
+async function changePassword(e) {
+  e.preventDefault();
+  const curr = document.getElementById('currentPw').value;
+  const nw   = document.getElementById('newPw').value;
+  const conf = document.getElementById('confirmPw').value;
+  if (nw !== conf) { showToast("Passwords don't match.", 'warning'); return; }
+  const r = await fetch('/admin/api/change-password', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ current_password: curr, new_password: nw })
+  });
+  const d = await r.json();
+  if (d.success) { showToast('Password updated!', 'success'); e.target.reset(); }
+  else showToast(d.error || 'Failed.', 'critical');
+}
+
+/* ── Dark mode sync ─────────────────────────────────────── */
+window.addEventListener('load', () => {
+  const t = document.getElementById('dmToggle');
+  if (t) t.checked = document.documentElement.dataset.theme === 'dark';
+});
+</script>
+{% endblock %}

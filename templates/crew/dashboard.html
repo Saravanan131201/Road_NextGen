@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+{% block title %}My Tasks — {{ team_cfg.name }} — Road NextGen{% endblock %}
+{% block page_title %}{{ team_cfg.name }} — Task Dashboard{% endblock %}
+
+
+
+{% block extra_css %}
+.task-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-left:4px solid var(--rv-border);border-radius:var(--rv-radius);padding:20px;box-shadow:var(--rv-shadow);transition:transform .2s,box-shadow .2s}
+.task-card:hover{transform:translateY(-2px);box-shadow:var(--rv-shadow-lg)}
+.task-card.critical{border-left-color:var(--rv-danger)}
+.task-card.high{border-left-color:var(--rv-warning)}
+.task-card.medium{border-left-color:var(--rv-primary-light)}
+.task-card.low{border-left-color:var(--rv-success)}
+.task-card.completed-card{border-left-color:#10b981;opacity:.85}
+.worker-chip{display:inline-flex;align-items:center;gap:6px;background:var(--rv-surface-2);border:1px solid var(--rv-border);border-radius:20px;padding:4px 10px;font-size:11.5px;font-weight:500}
+.worker-chip img{width:18px;height:18px;border-radius:50%;object-fit:cover}
+.worker-chip .placeholder-av{width:18px;height:18px;border-radius:50%;background:var(--rv-primary-light);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700}
+.tab-pill{padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--rv-border);background:var(--rv-surface-2);color:var(--rv-text-muted);cursor:pointer;transition:all .2s}
+.tab-pill.active{background:var(--rv-primary-light);border-color:var(--rv-primary-light);color:#fff}
+.worker-check-label{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--rv-surface-2);border:1.5px solid var(--rv-border);border-radius:var(--rv-radius-sm);cursor:pointer;transition:all .15s}
+.worker-check-label:hover{border-color:var(--rv-primary-light)}
+
+
+@media(max-width:991px) {
+  .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
+  .rv-sidebar.mobile-open ~ * .leaflet-control-zoom {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+  
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Team Info Banner -->
+<div class="rv-card mb-4" style="background:linear-gradient(135deg,{{ team_cfg.color }}18,{{ team_cfg.color }}08);border-color:{{ team_cfg.color }}30;padding:18px 24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:48px;height:48px;border-radius:14px;background:{{ team_cfg.color }};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff">
+        {{ team_key[0].upper() }}
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700">{{ user.name }}</div>
+        <div style="font-size:13px;color:var(--rv-text-muted)">Team Head · {{ team_cfg.name }} · Max {{ team_cfg.max_workers }} workers</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ team_cfg.color }}">{{ workers | selectattr('status','equalto','available') | list | length }}</div>
+        <div style="font-size:11px;color:var(--rv-text-muted)">Available</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace">{{ active_tasks | length }}</div>
+        <div style="font-size:11px;color:var(--rv-text-muted)">Active Tasks</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--rv-success)">{{ completed_count }}</div>
+        <div style="font-size:11px;color:var(--rv-text-muted)">Completed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card"><div class="rv-stat-icon primary"><i class="bi bi-list-task"></i></div>
+    <div><div class="rv-stat-value">{{ active_tasks | length }}</div><div class="rv-stat-label">Active Tasks</div></div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card"><div class="rv-stat-icon danger"><i class="bi bi-exclamation-octagon"></i></div>
+    <div><div class="rv-stat-value">{{ active_tasks | selectattr('task.priority', 'in', ['critical','high']) | list | length }}</div><div class="rv-stat-label">High Priority</div></div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card"><div class="rv-stat-icon success"><i class="bi bi-people"></i></div>
+    <div><div class="rv-stat-value">{{ workers | selectattr('status','equalto','available') | list | length }}</div><div class="rv-stat-label">Available Workers</div></div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rv-stat-card"><div class="rv-stat-icon accent"><i class="bi bi-check-all"></i></div>
+    <div><div class="rv-stat-value">{{ completed_count }}</div><div class="rv-stat-label">Completed</div></div></div>
+  </div>
+</div>
+
+<!-- Tab switcher -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <button class="tab-pill active" id="tabActive" onclick="switchTab('active')">
+    <i class="bi bi-tools me-1"></i>Active
+    <span style="margin-left:6px;background:rgba(255,255,255,.3);border-radius:20px;padding:1px 7px;font-size:11px">{{ active_tasks | length }}</span>
+  </button>
+  <button class="tab-pill" id="tabCompleted" onclick="switchTab('completed')">
+    <i class="bi bi-check-circle me-1"></i>Completed
+    <span style="margin-left:6px;background:rgba(255,255,255,.3);border-radius:20px;padding:1px 7px;font-size:11px">{{ completed_count }}</span>
+  </button>
+</div>
+
+<!-- ── ACTIVE TASKS ──────────────────────────────────────────────────────── -->
+<div id="panelActive">
+{% if active_tasks %}
+<div class="row g-4">
+  {% for item in active_tasks %}
+  {% set task = item.task %}
+  {% set report = item.report %}
+  {% set assigned_workers = item.workers %}
+  <div class="col-12 col-lg-6" id="tcard-{{ task._id }}">
+    <div class="task-card {{ task.priority }}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:{{ 'rgba(239,68,68,.12)' if task.priority=='critical' else ('rgba(245,158,11,.12)' if task.priority=='high' else ('rgba(59,130,246,.12)' if task.priority=='medium' else 'rgba(16,185,129,.12)')) }};color:{{ '#dc2626' if task.priority=='critical' else ('#d97706' if task.priority=='high' else ('#2563eb' if task.priority=='medium' else '#059669')) }}">
+              {{ task.priority }}
+            </span>
+            <span class="badge-status badge-status-{{ task.status }}">{{ task.status | replace('_',' ') | title }}</span>
+          </div>
+          <div style="font-size:15px;font-weight:700">{{ (report.display_names | join(', ')) if report.display_names else ((report.damage_types | map('replace', '_', ' ') | list | join(', ') | title) if report.damage_types else 'Road Damage') }}</div>
+          <div style="font-size:12px;color:var(--rv-text-muted);margin-top:3px">
+            <i class="bi bi-geo-alt me-1"></i>{{ report.location.address if report and report.location and report.location.address else 'Location not specified' }}
+          </div>
+        </div>
+        {% if report and report.images and (report.images.annotated or report.images.original) %}
+        <img src="{{ report.images.annotated or report.images.original }}" style="width:54px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--rv-border)" alt=""/>
+        {% endif %}
+      </div>
+
+      <!-- Workers -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11.5px;font-weight:600;color:var(--rv-text-muted);margin-bottom:8px">
+          ASSIGNED WORKERS ({{ assigned_workers | length }}/{{ team_cfg.max_workers }})
+        </div>
+        {% if assigned_workers %}
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          {% for w in assigned_workers %}
+          <div class="worker-chip">
+            {% if w.photo_url %}<img src="{{ w.photo_url }}" alt=""/>
+            {% else %}<div class="placeholder-av">{{ w.name[0].upper() }}</div>{% endif %}
+            {{ w.name.split()[0] }}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:12.5px;color:var(--rv-text-muted);background:rgba(245,158,11,.06);border:1px dashed rgba(245,158,11,.3);border-radius:var(--rv-radius-sm);padding:10px 12px">
+          <i class="bi bi-exclamation-triangle text-warning me-1"></i>No workers assigned yet.
+        </div>
+        {% endif %}
+      </div>
+
+      {% if task.due_date %}
+      <div style="font-size:12px;color:var(--rv-text-muted);margin-bottom:14px">
+        <i class="bi bi-calendar-event me-1"></i>Due: <strong>{{ task.due_date[:10] }}</strong>
+      </div>
+      {% endif %}
+
+      <!-- Repair photo status -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:{{ 'rgba(16,185,129,.12)' if task.before_image else 'rgba(100,116,139,.1)' }};color:{{ '#059669' if task.before_image else 'var(--rv-text-muted)' }}">
+          <i class="bi bi-{{ 'check-circle-fill' if task.before_image else 'camera' }}"></i> Before photo
+        </span>
+        <span style="font-size:11px;padding:2px 9px;border-radius:20px;background:{{ 'rgba(16,185,129,.12)' if task.after_image else 'rgba(100,116,139,.1)' }};color:{{ '#059669' if task.after_image else 'var(--rv-text-muted)' }}">
+          <i class="bi bi-{{ 'check-circle-fill' if task.after_image else 'camera' }}"></i> After photo
+        </span>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('crew.task_detail', task_id=task._id) }}" class="rv-btn rv-btn-secondary rv-btn-sm">
+          <i class="bi bi-eye"></i> Details
+        </a>
+        <!-- Pass assigned worker IDs as a plain JS array of strings -->
+        <button class="rv-btn rv-btn-sm" style="background:rgba(59,130,246,.1);color:#2563eb"
+                onclick='showAssignWorkers("{{ task._id }}", {{ assigned_workers | map(attribute="_id") | list | tojson }})'>
+          <i class="bi bi-people"></i> Assign Workers
+        </button>
+        {% if task.status == 'assigned' and assigned_workers %}
+        <button class="rv-btn rv-btn-sm" style="background:rgba(245,158,11,.12);color:#d97706"
+                onclick="updateStatus('{{ task._id }}','in_progress',this)">
+          <i class="bi bi-play-circle"></i> Start
+        </button>
+        {% elif task.status == 'in_progress' %}
+        <button class="rv-btn rv-btn-sm rv-btn-success"
+                onclick="tryComplete('{{ task._id }}', {{ 'true' if task.before_image else 'false' }}, {{ 'true' if task.after_image else 'false' }}, this)">
+          <i class="bi bi-check-circle"></i> Complete
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:80px 24px;color:var(--rv-text-muted)">
+  <i class="bi bi-list-check" style="font-size:64px;display:block;margin-bottom:20px;color:var(--rv-text-light)"></i>
+  <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No active tasks</h3>
+  <p style="font-size:14px">Your team has no active tasks. Check back later.</p>
+</div>
+{% endif %}
+</div>
+
+<!-- ── COMPLETED TASKS ───────────────────────────────────────────────────── -->
+<div id="panelCompleted" style="display:none">
+{% if completed_tasks %}
+<div class="row g-4" id="completedGrid">
+  {% for item in completed_tasks[:completed_page_size] %}
+  {% set task = item.task %}
+  {% set report = item.report %}
+  <div class="col-12 col-lg-6">
+    <div class="task-card completed-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+            <span class="badge-status badge-status-completed">Completed</span>
+            <span style="font-size:11px;color:var(--rv-text-muted)">{{ task.priority }} priority</span>
+          </div>
+          <div style="font-size:15px;font-weight:700">{{ (report.display_names | join(', ')) if report.display_names else ((report.damage_types | map('replace', '_', ' ') | list | join(', ') | title) if report.damage_types else 'Road Damage') }}</div>
+          <div style="font-size:12px;color:var(--rv-text-muted);margin-top:3px">
+            <i class="bi bi-geo-alt me-1"></i>{{ report.location.address if report and report.location and report.location.address else 'Location not specified' }}
+          </div>
+        </div>
+        {% if report and report.images and (report.images.annotated or report.images.original) %}
+        <img src="{{ report.images.annotated or report.images.original }}" style="width:54px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--rv-border)" alt=""/>
+        {% endif %}
+      </div>
+      {% if task.completed_at %}
+      <div style="font-size:12px;color:#059669;margin-bottom:12px">
+        <i class="bi bi-check-circle-fill me-1"></i>Completed {{ time_ago(task.completed_at) }}
+      </div>
+      {% endif %}
+      <div style="display:flex;gap:8px">
+        <a href="{{ url_for('crew.task_detail', task_id=task._id) }}" class="rv-btn rv-btn-secondary rv-btn-sm">
+          <i class="bi bi-eye"></i> View Details
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if completed_count > completed_page_size %}
+<div style="text-align:center;margin-top:24px">
+  <button class="rv-btn rv-btn-secondary" id="loadMoreBtn"
+          onclick="loadMoreCompleted(this)"
+          data-offset="{{ completed_page_size }}">
+    <i class="bi bi-arrow-down-circle"></i> Load More ({{ completed_count - completed_page_size }} remaining)
+  </button>
+</div>
+{% endif %}
+{% else %}
+<div style="text-align:center;padding:60px 24px;color:var(--rv-text-muted)">
+  <i class="bi bi-check-all" style="font-size:48px;display:block;margin-bottom:16px;color:var(--rv-text-light)"></i>
+  <p style="font-size:14px">No completed tasks yet.</p>
+</div>
+{% endif %}
+</div>
+
+<!-- ── REPAIR SITES MAP ──────────────────────────────────────────────────── -->
+{% if active_tasks %}
+<div class="rv-card mt-4" id="repairMapSection">
+  <div class="rv-card-title mb-3"><i class="bi bi-map me-2 text-primary"></i>Repair Sites</div>
+  <div id="crewMap" class="rv-map" style="height:320px"></div>
+</div>
+{% endif %}
+
+<!-- ── ASSIGN WORKERS MODAL ──────────────────────────────────────────────── -->
+<div class="modal fade" id="assignWorkersModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--rv-surface);border-color:var(--rv-border)">
+      <div class="modal-header" style="border-color:var(--rv-border)">
+        <h5 class="modal-title" style="font-size:15px;font-weight:700">
+          <i class="bi bi-people me-2 text-primary"></i>Assign Workers to Task
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="assignErr" class="alert alert-danger d-none" style="font-size:13px;border-radius:8px;padding:10px 14px"></div>
+        <input type="hidden" id="assignTaskId"/>
+        <div style="font-size:13px;color:var(--rv-text-muted);margin-bottom:14px;background:var(--rv-surface-2);border-radius:var(--rv-radius-sm);padding:10px 12px">
+          <i class="bi bi-info-circle text-primary me-1"></i>
+          Select workers from your team (1 to {{ team_cfg.max_workers }}).
+          Only <strong style="color:#059669">available</strong> workers shown.
+        </div>
+        <div id="workerChecklist" style="display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto">
+          <div style="text-align:center;padding:20px;color:var(--rv-text-muted)">Loading workers…</div>
+        </div>
+        <div id="selectionCount" style="font-size:12px;color:var(--rv-text-muted);margin-top:10px;text-align:center">
+          0 worker(s) selected
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--rv-border)">
+        <button class="rv-btn rv-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="rv-btn rv-btn-primary" id="assignSaveBtn" onclick="saveWorkerAssignment()">
+          <i class="bi bi-check-lg"></i> Save Assignment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MAX_WORKERS     = {{ team_cfg.max_workers }};
+const COMPLETED_TASKS = {{ completed_tasks | tojson }};
+const COMPLETED_TOTAL = {{ completed_count }};
+const PAGE_SIZE       = {{ completed_page_size }};
+
+// Force all _id fields to plain strings at the JS boundary
+const ALL_WORKERS = ({{ workers | tojson }}).map(w => ({
+  ...w,
+  _id: String(w._id && typeof w._id === 'object' ? (w._id['$oid'] || w._id) : w._id)
+}));
+
+console.log('[Dashboard] ALL_WORKERS loaded:', ALL_WORKERS.length, ALL_WORKERS.map(w => w._id));
+
+// ─── Tab switcher ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('panelActive').style.display    = tab === 'active'    ? '' : 'none';
+  document.getElementById('panelCompleted').style.display = tab === 'completed' ? '' : 'none';
+  document.getElementById('tabActive').classList.toggle('active',    tab === 'active');
+  document.getElementById('tabCompleted').classList.toggle('active', tab === 'completed');
+  const mapSec = document.getElementById('repairMapSection');
+  if (mapSec) mapSec.style.display = tab === 'active' ? '' : 'none';
+}
+
+// ─── Load more completed tasks ─────────────────────────────────────────────
+function loadMoreCompleted(btn) {
+  const offset = parseInt(btn.dataset.offset);
+  const slice  = COMPLETED_TASKS.slice(offset, offset + PAGE_SIZE);
+  const grid   = document.getElementById('completedGrid');
+  slice.forEach(item => {
+    const t = item.task, r = item.report;
+    const damageLabel = r?.display_names?.length ? r.display_names.join(', ') : ((r?.damage_types||[]).map(dt=>dt.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())).join(', ') || 'Road Damage');
+    const addr = r?.location?.address || 'Location not specified';
+    const imgTag = (r?.images?.annotated || r?.images?.original)
+      ? `<img src="${r.images.annotated||r.images.original}" style="width:54px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--rv-border)" alt=""/>`
+      : '';
+    const col = document.createElement('div');
+    col.className = 'col-12 col-lg-6';
+    col.innerHTML = `
+      <div class="task-card completed-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <span class="badge-status badge-status-completed">Completed</span>
+              <span style="font-size:11px;color:var(--rv-text-muted)">${t.priority} priority</span>
+            </div>
+            <div style="font-size:15px;font-weight:700">${damageLabel}</div>
+            <div style="font-size:12px;color:var(--rv-text-muted);margin-top:3px"><i class="bi bi-geo-alt me-1"></i>${addr}</div>
+          </div>${imgTag}
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="/crew/task/${t._id}" class="rv-btn rv-btn-secondary rv-btn-sm"><i class="bi bi-eye"></i> View Details</a>
+        </div>
+      </div>`;
+    grid.appendChild(col);
+  });
+  const newOffset = offset + slice.length;
+  const remaining = COMPLETED_TOTAL - newOffset;
+  if (remaining <= 0) btn.parentElement.remove();
+  else {
+    btn.dataset.offset = newOffset;
+    btn.innerHTML = `<i class="bi bi-arrow-down-circle"></i> Load More (${remaining} remaining)`;
+  }
+}
+
+// ─── Build worker checklist dynamically ───────────────────────────────────
+function buildWorkerList(alreadyAssigned) {
+  const checklist = document.getElementById('workerChecklist');
+
+  // Normalise alreadyAssigned to plain strings
+  const assignedIds = (alreadyAssigned || []).map(id =>
+    String(id && typeof id === 'object' ? (id['$oid'] || id) : id)
+  );
+
+  console.log('[buildWorkerList] assignedIds:', assignedIds);
+
+  const available = ALL_WORKERS.filter(w => w.status === 'available');
+  console.log('[buildWorkerList] available workers:', available.length);
+
+  if (!available.length) {
+    checklist.innerHTML = `
+      <div style="text-align:center;padding:30px;color:var(--rv-text-muted)">
+        <i class="bi bi-person-slash" style="font-size:32px;display:block;margin-bottom:8px"></i>
+        No available workers.
+        <a href="/crew/workers" style="color:var(--rv-primary-light)">Manage workers →</a>
+      </div>`;
+    document.getElementById('selectionCount').textContent = '0 worker(s) selected';
+    return;
+  }
+
+  checklist.innerHTML = available.map(w => {
+    const wid       = String(w._id);
+    const isChecked = assignedIds.includes(wid);
+    const avatar    = w.photo_url
+      ? `<img src="${w.photo_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0" alt=""/>`
+      : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--rv-primary),var(--rv-accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">${(w.name||'?')[0].toUpperCase()}</div>`;
+
+    return `<label class="worker-check-label"
+                   style="background:${isChecked ? 'var(--rv-primary-glow)' : 'var(--rv-surface-2)'};
+                          border-color:${isChecked ? 'var(--rv-primary-light)' : 'var(--rv-border)'}">
+      <input type="checkbox" class="worker-cb" value="${wid}" ${isChecked ? 'checked' : ''}
+             style="width:16px;height:16px;accent-color:var(--rv-primary-light);cursor:pointer;flex-shrink:0"/>
+      ${avatar}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:600">${w.name || ''}</div>
+        <div style="font-size:12px;color:var(--rv-text-muted)">${w.phone || ''}</div>
+      </div>
+      <span style="font-size:11px;background:rgba(16,185,129,.12);color:#059669;padding:2px 8px;border-radius:20px;font-weight:600;flex-shrink:0">Available</span>
+    </label>`;
+  }).join('');
+
+  // Attach change listeners fresh
+  document.querySelectorAll('#workerChecklist .worker-cb').forEach(cb => {
+    cb.addEventListener('change', syncWorkerUI);
+  });
+
+  syncWorkerUI();
+}
+
+// ─── Sync checkbox UI ─────────────────────────────────────────────────────
+function syncWorkerUI() {
+  const cbs      = document.querySelectorAll('#workerChecklist .worker-cb');
+  const checked  = Array.from(cbs).filter(cb => cb.checked).length;
+  document.getElementById('selectionCount').textContent = `${checked} worker(s) selected`;
+
+  cbs.forEach(cb => {
+    const lbl = cb.closest('.worker-check-label');
+    if (!lbl) return;
+    lbl.style.borderColor = cb.checked ? 'var(--rv-primary-light)' : 'var(--rv-border)';
+    lbl.style.background  = cb.checked ? 'var(--rv-primary-glow)'  : 'var(--rv-surface-2)';
+    if (!cb.checked) cb.disabled = checked >= MAX_WORKERS;
+    else             cb.disabled = false;
+  });
+}
+
+// ─── Open modal ───────────────────────────────────────────────────────────
+function showAssignWorkers(taskId, alreadyAssigned) {
+  console.log('[showAssignWorkers] taskId:', taskId, 'alreadyAssigned:', alreadyAssigned);
+  try {
+    document.getElementById('assignTaskId').value = taskId;
+    document.getElementById('assignErr').classList.add('d-none');
+    buildWorkerList(alreadyAssigned);
+
+    const modalEl = document.getElementById('assignWorkersModal');
+    // Reuse existing instance or create new
+    let modal = bootstrap.Modal.getInstance(modalEl);
+    if (!modal) modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  } catch(err) {
+    console.error('[showAssignWorkers] error:', err);
+    alert('Could not open workers modal: ' + err.message);
+  }
+}
+
+// ─── Save assignment ──────────────────────────────────────────────────────
+async function saveWorkerAssignment() {
+  const taskId    = document.getElementById('assignTaskId').value;
+  const errEl     = document.getElementById('assignErr');
+  const workerIds = Array.from(document.querySelectorAll('#workerChecklist .worker-cb:checked'))
+                         .map(cb => cb.value);
+  errEl.classList.add('d-none');
+
+  if (!workerIds.length) {
+    errEl.textContent = 'Select at least one worker.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  if (workerIds.length > MAX_WORKERS) {
+    errEl.textContent = `Maximum ${MAX_WORKERS} workers allowed.`;
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  const btn = document.getElementById('assignSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+
+  try {
+    const r = await fetch(`/crew/api/task/${taskId}/assign-workers`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({worker_ids: workerIds})
+    });
+    const d = await r.json();
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('assignWorkersModal')).hide();
+      showToast(`${d.assigned_count} worker(s) assigned!`, 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      errEl.textContent = d.error || 'Assignment failed.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error.';
+    errEl.classList.remove('d-none');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Assignment';
+}
+
+// ─── Status update ────────────────────────────────────────────────────────
+async function updateStatus(taskId, status, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+  try {
+    const r = await fetch(`/crew/api/task/${taskId}/status`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status})
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast(status === 'completed' ? 'Task completed!' : 'Work started!', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(d.error || 'Update failed.', 'critical');
+      btn.disabled = false;
+      btn.innerHTML = status === 'completed'
+        ? '<i class="bi bi-check-circle"></i> Complete'
+        : '<i class="bi bi-play-circle"></i> Start';
+    }
+  } catch(e) {
+    showToast('Network error.', 'critical');
+    btn.disabled = false;
+  }
+}
+
+// ─── Try complete ─────────────────────────────────────────────────────────
+function tryComplete(taskId, hasBefore, hasAfter, btn) {
+  const missing = [];
+  if (!hasBefore) missing.push('before-repair photo');
+  if (!hasAfter)  missing.push('after-repair photo');
+  if (missing.length) {
+    showToast(`Upload the ${missing.join(' and ')} before completing. Go to task details.`, 'critical');
+    return;
+  }
+  updateStatus(taskId, 'completed', btn);
+}
+
+// ─── Map ──────────────────────────────────────────────────────────────────
+function initCrewMap() {
+  const mapEl = document.getElementById('crewMap');
+  if (!mapEl) return;
+  const map = L.map('crewMap').setView([13.0827, 80.2707], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              {attribution:'© OSM', maxZoom:19}).addTo(map);
+  const sColors = {critical:'#ef4444', high:'#f59e0b', medium:'#3b82f6', low:'#10b981'};
+  const tasks = {{ active_tasks | tojson }};
+  tasks.forEach(item => {
+    const r = item.report, t = item.task;
+    if (!r?.location?.coordinates) return;
+    const [lng, lat] = r.location.coordinates;
+    if (!lat || !lng) return;
+    const c = sColors[t.priority] || '#3b82f6';
+    const dmgLabel = r?.display_names?.length ? r.display_names.join(', ') : (r?.damage_types||[]).map(dt=>dt.replace(/_/g,' ')).join(', ');
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:32px;height:32px;border-radius:50%;background:${c};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">🔧</div>`,
+        iconSize: [32, 32], iconAnchor: [16, 16]
+      })
+     }).addTo(map).bindPopup(`<b>${dmgLabel}</b><br>${t.priority} priority`);
+  });
+}
+setTimeout(initCrewMap, 300);
+</script>
+{% endblock %}

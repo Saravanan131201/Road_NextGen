@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Notifications — Road NextGen{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+
+
+{% block profile_link %}<li><a class="dropdown-item" href="{{ url_for('citizen.profile') }}"><i class="bi bi-person me-2"></i>Profile</a></li>{% endblock %}
+
+{% block content %}
+<div class="rv-card">
+  <div class="rv-card-header mb-4">
+    <div>
+      <div class="rv-card-title"><i class="bi bi-bell me-2 text-primary"></i>All Notifications</div>
+      <div class="rv-card-subtitle">{{ notifications | length }} notification(s)</div>
+    </div>
+    {% if notifications %}
+    <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="markAll()">
+      <i class="bi bi-check-all"></i> Mark all read
+    </button>
+    {% endif %}
+  </div>
+
+  {% set type_icons = {'info': 'info-circle', 'warning': 'exclamation-triangle', 'success': 'check-circle', 'critical': 'exclamation-octagon'} %}
+  {% set type_colors = {'info': 'var(--rv-accent)', 'warning': 'var(--rv-warning)', 'success': 'var(--rv-success)', 'critical': 'var(--rv-danger)'} %}
+
+  {% if notifications %}
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for n in notifications %}
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:{{ 'var(--rv-primary-glow)' if not n.is_read else 'var(--rv-surface-2)' }};border:1px solid var(--rv-border);border-left:3px solid {{ type_colors.get(n.type,'var(--rv-accent)') }};border-radius:var(--rv-radius-sm);opacity:{{ '0.7' if n.is_read else '1' }};cursor:pointer;transition:opacity .2s"
+         onclick="readNotif('{{ n._id }}')">
+      <div style="width:36px;height:36px;border-radius:50%;background:{{ type_colors.get(n.type,'var(--rv-accent)') }}18;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:{{ type_colors.get(n.type,'var(--rv-accent)') }}">
+        <i class="bi bi-{{ type_icons.get(n.type,'info-circle') }}"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:{{ '400' if n.is_read else '600' }};margin-bottom:3px">{{ n.title }}</div>
+        <div style="font-size:12.5px;color:var(--rv-text-muted)">{{ n.message }}</div>
+        <div style="font-size:11px;color:var(--rv-text-light);margin-top:5px">
+          <i class="bi bi-clock me-1"></i>{{ fmt_dt(n.created_at) if n.created_at else '—' }}
+        </div>
+      </div>
+      {% if not n.is_read %}
+      <div style="width:9px;height:9px;border-radius:50%;background:var(--rv-primary-light);flex-shrink:0;margin-top:6px"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:72px 24px;color:var(--rv-text-muted)">
+    <i class="bi bi-bell-slash" style="font-size:56px;display:block;margin-bottom:16px;color:var(--rv-text-light)"></i>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No notifications</h3>
+    <p style="font-size:14px">You're all caught up! We'll notify you when there are updates on your reports.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function readNotif(id) {
+  await fetch(`/api/notifications/${id}/read`, {method: 'POST'});
+  location.reload();
+}
+async function markAll() {
+  await fetch('/api/notifications/read-all', {method: 'POST'});
+  location.reload();
+}
+</script>
+{% endblock %}

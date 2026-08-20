@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ team_cfg.name }} — Road NextGen{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+
+
+{% block profile_link %}{% endblock %}
+
+{% block extra_css %}
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 15px 16px;
+  border: 1px solid var(--rv-border);
+  border-left: 3px solid var(--rv-border);
+  border-radius: var(--rv-radius-sm);
+  cursor: pointer;
+  transition: all .18s;
+  background: var(--rv-surface-2);
+}
+.notif-item:hover { box-shadow: var(--rv-shadow); transform: translateX(2px); }
+.notif-item.unread {
+  background: var(--rv-primary-glow);
+  border-left-color: var(--rv-primary-light);
+}
+.notif-item.type-warning  { border-left-color: var(--rv-warning); }
+.notif-item.type-success  { border-left-color: var(--rv-success); }
+.notif-item.type-critical { border-left-color: var(--rv-danger); }
+.notif-item.type-info     { border-left-color: var(--rv-accent); }
+.notif-item.unread.type-warning  { background: rgba(245,158,11,.07); }
+.notif-item.unread.type-success  { background: rgba(16,185,129,.07); }
+.notif-item.unread.type-critical { background: rgba(239,68,68,.07); }
+.notif-item.unread.type-info     { background: rgba(6,182,212,.07); }
+.notif-icon-wrap {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; flex-shrink: 0;
+}
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 14px; border-radius: 20px;
+  border: 1.5px solid var(--rv-border);
+  background: none; color: var(--rv-text-muted);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .18s;
+}
+.filter-chip.active, .filter-chip:hover {
+  border-color: var(--rv-primary-light);
+  color: var(--rv-primary-light);
+  background: var(--rv-primary-glow);
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- Header row -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  <div>
+    <!-- Team pill -->
+    <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;background:{{ team_cfg.get('color','#3b82f6') }}18;color:{{ team_cfg.get('color','#3b82f6') }};border:1px solid {{ team_cfg.get('color','#3b82f6') }}35;margin-bottom:6px">
+      <i class="bi bi-cone-striped"></i>{{ team_cfg.get('name','Your Team') }}
+    </span>
+    <div style="font-size:13px;color:var(--rv-text-muted)">
+      {% set unread_count = notifications | rejectattr('is_read') | list | length %}
+      <strong>{{ unread_count }}</strong> unread · {{ notifications | length }} total
+    </div>
+  </div>
+  {% if notifications %}
+  <div style="display:flex;gap:8px">
+    <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="markAllRead()">
+      <i class="bi bi-check-all"></i> Mark all read
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filter chips -->
+{% if notifications %}
+<div style="display:flex;gap-8px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:6px">
+  <button class="filter-chip active" id="chip-all"     onclick="filterNotifs('all',this)">All</button>
+  <button class="filter-chip"        id="chip-unread"  onclick="filterNotifs('unread',this)">
+    <span style="width:7px;height:7px;border-radius:50%;background:var(--rv-primary-light)"></span>Unread
+  </button>
+  <button class="filter-chip"        id="chip-warning" onclick="filterNotifs('warning',this)">
+    <i class="bi bi-exclamation-triangle" style="color:var(--rv-warning)"></i>Tasks
+  </button>
+  <button class="filter-chip"        id="chip-success" onclick="filterNotifs('success',this)">
+    <i class="bi bi-check-circle" style="color:var(--rv-success)"></i>Completed
+  </button>
+  <button class="filter-chip"        id="chip-info"    onclick="filterNotifs('info',this)">
+    <i class="bi bi-info-circle" style="color:var(--rv-accent)"></i>Info
+  </button>
+</div>
+{% endif %}
+
+<!-- Notification list -->
+<div class="rv-card" style="padding:0;overflow:hidden">
+  {% if notifications %}
+  <div id="notifContainer" style="display:flex;flex-direction:column;gap:0">
+
+    {% set type_icons  = {'info':'info-circle','warning':'exclamation-triangle','success':'check-circle-fill','critical':'exclamation-octagon-fill'} %}
+    {% set type_colors = {'info':'var(--rv-accent)','warning':'var(--rv-warning)','success':'var(--rv-success)','critical':'var(--rv-danger)'} %}
+    {% set type_bg     = {'info':'rgba(6,182,212,.1)','warning':'rgba(245,158,11,.1)','success':'rgba(16,185,129,.1)','critical':'rgba(239,68,68,.1)'} %}
+
+    {% for n in notifications %}
+    {% set ntype  = n.type or 'info' %}
+    {% set icon   = type_icons.get(ntype,  'info-circle') %}
+    {% set color  = type_colors.get(ntype, 'var(--rv-accent)') %}
+    {% set bg     = type_bg.get(ntype,     'rgba(6,182,212,.1)') %}
+
+    <div class="notif-item {{ 'unread' if not n.is_read }} type-{{ ntype }}"
+         id="notif-{{ n._id }}"
+         data-type="{{ ntype }}"
+         data-read="{{ 'true' if n.is_read else 'false' }}"
+         onclick="handleNotifClick('{{ n._id }}','{{ n.data.get('task_id','') if n.data else '' }}')"
+         style="border-radius:0;border-left-width:3px;border-right:none;border-top:none;border-bottom:1px solid var(--rv-border)">
+
+      <!-- Icon -->
+      <div class="notif-icon-wrap" style="background:{{ bg }}; color:{{ color }}">
+        <i class="bi bi-{{ icon }}"></i>
+      </div>
+
+      <!-- Content -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+          <div style="font-size:13.5px;font-weight:{{ '700' if not n.is_read else '500' }};line-height:1.35">
+            {{ n.title }}
+          </div>
+          <!-- Timestamp -->
+          <div style="font-size:11px;color:var(--rv-text-light);white-space:nowrap;flex-shrink:0;margin-top:1px">
+            {{ fmt_dt(n.created_at) if n.created_at else '—' }}
+          </div>
+        </div>
+        <div style="font-size:12.5px;color:var(--rv-text-muted);line-height:1.5">
+          {{ n.message }}
+        </div>
+        <!-- Task link badge -->
+        {% if n.data and n.data.get('task_id') %}
+        <div style="margin-top:7px">
+          <span style="font-size:11px;background:var(--rv-primary-glow);color:var(--rv-primary-light);padding:2px 10px;border-radius:20px;font-weight:600">
+            <i class="bi bi-arrow-right-circle me-1"></i>View Task
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Unread dot -->
+      {% if not n.is_read %}
+      <div style="width:9px;height:9px;border-radius:50%;background:{{ color }};flex-shrink:0;margin-top:5px"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- Empty-filter state (hidden by default) -->
+  <div id="notifEmptyFilter" style="display:none;text-align:center;padding:56px 24px;color:var(--rv-text-muted)">
+    <i class="bi bi-funnel" style="font-size:40px;display:block;margin-bottom:12px;color:var(--rv-text-light)"></i>
+    <p style="font-size:14px;font-weight:600">No notifications match this filter</p>
+    <button class="rv-btn rv-btn-secondary rv-btn-sm mt-3" onclick="filterNotifs('all',document.getElementById('chip-all'))">
+      Show all
+    </button>
+  </div>
+
+  {% else %}
+  <!-- Fully empty state -->
+  <div style="text-align:center;padding:80px 24px;color:var(--rv-text-muted)">
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--rv-surface-2);border:2px solid var(--rv-border);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+      <i class="bi bi-bell-slash" style="font-size:36px;color:var(--rv-text-light)"></i>
+    </div>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">No notifications yet</h3>
+    <p style="font-size:14px;max-width:320px;margin:0 auto 24px;line-height:1.6">
+      When the admin assigns tasks to your team or there are updates, they'll appear here.
+    </p>
+    <a href="{{ url_for('crew.dashboard') }}" class="rv-btn rv-btn-primary rv-btn-sm">
+      <i class="bi bi-list-check"></i> Go to Dashboard
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── Filter ───────────────────────────────────────────────────────────────────
+let currentFilter = 'all';
+
+function filterNotifs(filter, chipEl) {
+  currentFilter = filter;
+
+  // Update chip styles
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  if (chipEl) chipEl.classList.add('active');
+
+  const items   = document.querySelectorAll('.notif-item');
+  const emptyEl = document.getElementById('notifEmptyFilter');
+  let visible   = 0;
+
+  items.forEach(item => {
+    let show = false;
+    if (filter === 'all') {
+      show = true;
+    } else if (filter === 'unread') {
+      show = item.dataset.read === 'false';
+    } else {
+      show = item.dataset.type === filter;
+    }
+    item.style.display = show ? 'flex' : 'none';
+    if (show) visible++;
+  });
+
+  if (emptyEl) emptyEl.style.display = visible === 0 ? 'block' : 'none';
+}
+
+// ─── Mark all read ────────────────────────────────────────────────────────────
+async function markAllRead() {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Marking…';
+
+  try {
+    const r = await fetch('/api/notifications/read-all', { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      // Visually mark all as read without reloading
+      document.querySelectorAll('.notif-item').forEach(item => {
+        item.classList.remove('unread');
+        item.dataset.read = 'true';
+        const dot = item.querySelector('[data-unread-dot]');
+        if (dot) dot.remove();
+        // Reset font-weight of title
+        const title = item.querySelector('[style*="font-weight"]');
+        if (title) title.style.fontWeight = '500';
+      });
+      // Remove all unread dots
+      document.querySelectorAll('.notif-item > div:last-child').forEach(el => {
+        if (el.style && el.style.borderRadius === '50%') el.remove();
+      });
+      showToast('All notifications marked as read.', 'success');
+      btn.innerHTML = '<i class="bi bi-check-all"></i> All read';
+    }
+  } catch(e) {
+    showToast('Failed to mark notifications.', 'critical');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-all"></i> Mark all read';
+  }
+}
+
+// ─── Click handler ────────────────────────────────────────────────────────────
+async function handleNotifClick(notifId, taskId) {
+  // Mark as read
+  try {
+    await fetch(`/api/notifications/${notifId}/read`, { method: 'POST' });
+  } catch(e) {}
+
+  // Update visual
+  const el = document.getElementById(`notif-${notifId}`);
+  if (el) {
+    el.classList.remove('unread');
+    el.dataset.read = 'true';
+    const dot = el.querySelector('div[style*="border-radius: 50%"]');
+    if (dot) dot.style.opacity = '0';
+  }
+
+  // Navigate to task if linked
+  if (taskId && taskId.trim()) {
+    setTimeout(() => {
+      window.location.href = `/crew/task/${taskId}`;
+    }, 150);
+  }
+}
+
+// ─── Real-time socket updates ─────────────────────────────────────────────────
+socket.on('task_assigned', data => {
+  showToast(
+    `New task assigned — Priority: ${data.priority?.toUpperCase()}`,
+    'warning',
+    '📋 Task Assigned'
+  );
+  // Reload after a short delay to show the new notification
+  setTimeout(() => location.reload(), 3000);
+});
+
+socket.on('task_updated', data => {
+  showToast(`Task status updated to: ${data.status}`, 'info');
+});
+
+// ─── Init: re-apply filter on load ───────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Highlight unread count on the bell in topbar
+  const unreadCount = document.querySelectorAll('.notif-item.unread').length;
+  const dot = document.getElementById('notifDot');
+  if (dot) dot.style.display = unreadCount > 0 ? 'block' : 'none';
+});
+</script>
+{% endblock %}

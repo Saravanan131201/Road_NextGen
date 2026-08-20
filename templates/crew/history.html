@@ -1,0 +1,789 @@
+{% extends "base.html" %}
+{% block title %}Task History — Road NextGen{% endblock %}
+{% block page_title %}Task History{% endblock %}
+
+
+{% block profile_link %}{% endblock %}
+{% block content %}
+
+<style>
+  /* =========================================================
+     TASK HISTORY
+     ========================================================= */
+
+  .task-history {
+    width: 100%;
+  }
+
+
+  /* =========================================================
+     HEADER
+     ========================================================= */
+
+  .task-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .task-history-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--rv-text);
+  }
+
+  .task-history-title i {
+    color: var(--rv-success);
+  }
+
+  .task-history-subtitle {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--rv-text-muted);
+  }
+
+
+  /* =========================================================
+     TASK LIST
+     ========================================================= */
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+
+  /* =========================================================
+     INDIVIDUAL TASK CARD
+     ========================================================= */
+
+  .task-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+
+    background: var(--rv-surface-2);
+    border: 1px solid var(--rv-border);
+    border-left: 3px solid var(--rv-success);
+    border-radius: var(--rv-radius);
+
+    transition:
+      transform .18s ease,
+      box-shadow .18s ease,
+      border-color .18s ease;
+  }
+
+  .task-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+  }
+
+
+  /* =========================================================
+     MAIN TASK INFORMATION
+     ========================================================= */
+
+  .task-card-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+  }
+
+
+  /* =========================================================
+     COMPLETED STATUS ICON
+     ========================================================= */
+
+  .task-status-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+
+    border-radius: 50%;
+
+    background: rgba(16, 185, 129, .12);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #059669;
+    font-size: 18px;
+
+    flex-shrink: 0;
+  }
+
+
+  /* =========================================================
+     TASK INFORMATION
+     ========================================================= */
+
+  .task-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+
+  /* Task name */
+
+  .task-name {
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--rv-text);
+
+    line-height: 1.4;
+
+    margin-bottom: 4px;
+
+    /* Prevent very long damage names from breaking layout */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+
+  /* =========================================================
+     LOCATION
+     ========================================================= */
+
+  .task-location {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 5px;
+
+    min-width: 0;
+
+    font-size: 12px;
+    color: var(--rv-text-muted);
+
+    line-height: 1.45;
+
+    /*
+     * IMPORTANT:
+     * Location is allowed to wrap to multiple lines.
+     */
+    white-space: normal;
+
+    overflow: visible;
+  }
+
+  .task-location i {
+    flex-shrink: 0;
+
+    margin-top: 2px;
+
+    font-size: 10px;
+  }
+
+  .task-location span {
+    min-width: 0;
+
+    /*
+     * Allow complete address to wrap naturally.
+     */
+    white-space: normal;
+
+    overflow: visible;
+
+    text-overflow: unset;
+
+    overflow-wrap: anywhere;
+
+    word-break: break-word;
+
+    line-height: 1.45;
+  }
+
+
+  /* =========================================================
+     COMPLETED TIME
+     ========================================================= */
+
+  .task-completed {
+    display: flex;
+    align-items: center;
+
+    gap: 5px;
+
+    margin-top: 4px;
+
+    font-size: 11px;
+
+    color: var(--rv-text-light);
+
+    white-space: nowrap;
+  }
+
+  .task-completed i {
+    flex-shrink: 0;
+
+    font-size: 10px;
+  }
+
+
+  /* =========================================================
+     VIEW BUTTON
+     ========================================================= */
+
+  .task-action {
+    flex-shrink: 0;
+  }
+
+  .task-action .rv-btn {
+    white-space: nowrap;
+  }
+
+
+  /* =========================================================
+     BEFORE / AFTER IMAGES
+     ========================================================= */
+
+  .task-images {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    width: 100%;
+
+    border-top: 1px solid var(--rv-border);
+  }
+
+  .task-image {
+    position: relative;
+
+    min-width: 0;
+
+    overflow: hidden;
+  }
+
+  .task-image + .task-image {
+    border-left: 1px solid var(--rv-border);
+  }
+
+  .task-image img {
+    display: block;
+
+    width: 100%;
+    height: 110px;
+
+    object-fit: cover;
+  }
+
+
+  /* =========================================================
+     IMAGE LABELS
+     ========================================================= */
+
+  .image-label {
+    position: absolute;
+
+    left: 8px;
+    bottom: 8px;
+
+    padding: 3px 8px;
+
+    border-radius: 4px;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    letter-spacing: .45px;
+
+    color: #fff;
+
+    background: rgba(0, 0, 0, .58);
+  }
+
+  .image-label.after {
+    background: rgba(16, 185, 129, .82);
+  }
+
+
+  /* =========================================================
+     EMPTY STATE
+     ========================================================= */
+
+  .task-empty {
+    text-align: center;
+
+    padding: 60px 20px;
+
+    color: var(--rv-text-muted);
+  }
+
+  .task-empty i {
+    display: block;
+
+    margin-bottom: 14px;
+
+    font-size: 46px;
+
+    color: var(--rv-text-light);
+  }
+
+  .task-empty p {
+    margin: 0;
+
+    font-size: 14px;
+  }
+
+
+  /* =========================================================
+     TABLET
+     ========================================================= */
+
+  @media (max-width: 768px) {
+
+    .task-history-header {
+      margin-bottom: 16px;
+    }
+
+    .task-history-title {
+      font-size: 17px;
+    }
+
+    .task-history-subtitle {
+      font-size: 12px;
+    }
+
+    .task-card-main {
+      padding: 14px;
+
+      gap: 12px;
+    }
+
+    .task-status-icon {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+
+      font-size: 16px;
+    }
+
+    .task-name {
+      font-size: 13.5px;
+    }
+
+    .task-location {
+      font-size: 12px;
+
+      line-height: 1.45;
+    }
+
+    .task-location span {
+      line-height: 1.45;
+    }
+
+    .task-image img {
+      height: 100px;
+    }
+  }
+
+
+  /* =========================================================
+     MOBILE
+     ========================================================= */
+
+  @media (max-width: 576px) {
+
+    .task-history {
+      width: 100%;
+    }
+
+
+    /* Header */
+
+    .task-history-header {
+      margin-bottom: 14px;
+    }
+
+    .task-history-title {
+      font-size: 16px;
+
+      gap: 8px;
+    }
+
+    .task-history-subtitle {
+      font-size: 12px;
+    }
+
+
+    /* Task card */
+
+    .task-card-main {
+      display: grid;
+
+      grid-template-columns: auto minmax(0, 1fr);
+
+      gap: 10px 12px;
+
+      padding: 14px;
+    }
+
+
+    /* Icon */
+
+    .task-status-icon {
+      grid-row: 1;
+
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+
+      font-size: 15px;
+    }
+
+
+    /* Information */
+
+    .task-info {
+      grid-column: 2;
+
+      width: 100%;
+
+      min-width: 0;
+    }
+
+    .task-name {
+      font-size: 13.5px;
+
+      line-height: 1.4;
+    }
+
+
+    /* Location */
+
+    .task-location {
+      display: flex;
+      align-items: flex-start;
+
+      width: 100%;
+
+      font-size: 11.5px;
+
+      line-height: 1.5;
+
+      /*
+       * Keep full address visible.
+       * It can occupy multiple lines.
+       */
+      white-space: normal;
+
+      overflow: visible;
+    }
+
+    .task-location i {
+      margin-top: 3px;
+
+      font-size: 10px;
+
+      flex-shrink: 0;
+    }
+
+    .task-location span {
+      min-width: 0;
+
+      white-space: normal;
+
+      overflow: visible;
+
+      text-overflow: unset;
+
+      overflow-wrap: anywhere;
+
+      word-break: break-word;
+
+      line-height: 1.5;
+    }
+
+
+    /* Completed time */
+
+    .task-completed {
+      font-size: 10.5px;
+
+      margin-top: 5px;
+    }
+
+
+    /* View button */
+
+    .task-action {
+      grid-column: 1 / -1;
+
+      width: 100%;
+
+      margin-top: 2px;
+    }
+
+    .task-action .rv-btn {
+      width: 100%;
+
+      justify-content: center;
+
+      display: flex;
+    }
+
+
+    /* Images */
+
+    .task-image img {
+      height: 90px;
+    }
+
+    .image-label {
+      left: 6px;
+      bottom: 6px;
+
+      font-size: 9px;
+
+      padding: 2px 6px;
+    }
+  }
+
+
+  /* =========================================================
+     VERY SMALL MOBILE
+     ========================================================= */
+
+  @media (max-width: 380px) {
+
+    .task-card-main {
+      padding: 12px;
+
+      gap: 9px 10px;
+    }
+
+    .task-status-icon {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+
+      font-size: 14px;
+    }
+
+    .task-name {
+      font-size: 13px;
+    }
+
+    .task-location {
+      font-size: 11px;
+
+      line-height: 1.5;
+    }
+
+    .task-location span {
+      line-height: 1.5;
+    }
+
+    .task-completed {
+      font-size: 10px;
+    }
+
+    .task-image img {
+      height: 75px;
+    }
+
+    .image-label {
+      left: 5px;
+      bottom: 5px;
+
+      font-size: 8px;
+
+      padding: 2px 5px;
+    }
+  }
+
+
+  /* =========================================================
+     EXTRA SMALL SCREENS
+     ========================================================= */
+
+  @media (max-width: 320px) {
+
+    .task-card-main {
+      padding: 10px;
+    }
+
+    .task-status-icon {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+
+      font-size: 13px;
+    }
+
+    .task-name {
+      font-size: 12.5px;
+    }
+
+    .task-location {
+      font-size: 10.5px;
+    }
+
+    .task-completed {
+      font-size: 9.5px;
+    }
+
+    .task-image img {
+      height: 68px;
+    }
+  }
+</style>
+<div class="task-history">
+
+  <!-- Header -->
+  <div class="task-history-header">
+    <div>
+      <div class="task-history-title">
+        <i class="bi bi-check-all"></i>
+        Completed Repairs
+      </div>
+
+      <div class="task-history-subtitle">
+        {{ tasks | length }} completed task(s)
+      </div>
+    </div>
+  </div>
+
+
+  {% if tasks %}
+
+  <!-- Task List -->
+  <div class="task-list">
+
+    {% for item in tasks %}
+
+    {% set task = item.task %}
+    {% set report = item.report %}
+
+    <!-- Single Task Card -->
+    <div class="task-card">
+
+      <!-- Task Details -->
+      <div class="task-card-main">
+
+        <!-- Completed Icon -->
+        <div class="task-status-icon">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+
+        <!-- Task Information -->
+        <div class="task-info">
+
+          <div class="task-name">
+            {{ (report.display_names | join(', '))
+              if report.display_names
+              else (
+                (report.damage_types
+                  | map('replace', '_', ' ')
+                  | list
+                  | join(', ')
+                  | title)
+                if report.damage_types
+                else 'Damage'
+              )
+            }} Repair
+          </div>
+
+          <div class="task-location">
+            <i class="bi bi-geo-alt"></i>
+            <span>
+              {{ report.location.address
+                 if report and report.location
+                 else '—' }}
+            </span>
+          </div>
+
+          <div class="task-completed">
+            <i class="bi bi-clock"></i>
+            <span>
+              Completed
+              {{ time_ago(task.completed_at)
+                 if task.completed_at
+                 else '—' }}
+            </span>
+          </div>
+
+        </div>
+
+        <!-- View Button -->
+        <div class="task-action">
+          <a
+            href="{{ url_for('crew.task_detail', task_id=task._id) }}"
+            class="rv-btn rv-btn-secondary rv-btn-sm"
+          >
+            <i class="bi bi-eye me-1"></i>
+            View
+          </a>
+        </div>
+
+      </div>
+
+
+      <!-- Before / After Images -->
+      {% if task.before_image and task.after_image %}
+
+      <div class="task-images">
+
+        <!-- Before -->
+        <div class="task-image">
+          <img
+            src="{{ task.before_image }}"
+            alt="Before repair"
+            loading="lazy"
+          >
+
+          <span class="image-label">
+            BEFORE
+          </span>
+        </div>
+
+        <!-- After -->
+        <div class="task-image">
+          <img
+            src="{{ task.after_image }}"
+            alt="After repair"
+            loading="lazy"
+          >
+
+          <span class="image-label after">
+            AFTER
+          </span>
+        </div>
+
+      </div>
+
+      {% endif %}
+
+    </div>
+
+    {% endfor %}
+
+  </div>
+
+  {% else %}
+
+  <!-- Empty State -->
+  <div class="task-empty">
+    <i class="bi bi-hourglass"></i>
+
+    <p>
+      No completed tasks yet.
+      Finish your first repair to see it here.
+    </p>
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}
