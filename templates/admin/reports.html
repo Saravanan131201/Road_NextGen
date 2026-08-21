@@ -8,8 +8,10 @@
 /* ── Filters ── */
 .rpt-filter-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .rpt-filter-bar .rv-form-control{min-width:120px;flex:1}
-.rpt-count{font-size:13px;color:var(--rv-text-muted);margin-left:auto;align-self:center;white-space:nowrap}
-
+.rpt-count{font-size:13px;color:var(--rv-text-muted);white-space:nowrap}
+@media(max-width:575px){
+  .rpt-count{width:100%;text-align:right;padding-top:2px}
+}
 /* ── Report card (replaces table on all sizes) ── */
 .rpt-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius);overflow:hidden;margin-bottom:10px;transition:box-shadow .15s}
 .rpt-card:hover{box-shadow:var(--rv-shadow)}
@@ -127,17 +129,16 @@
 
 
     <!-- Buttons + count -->
-    <div style="display:flex;align-items:flex-end;gap:8px;flex-shrink:0">
+    <div style="display:flex;align-items:flex-end;gap:8px;flex-shrink:0;flex-wrap:wrap">
       <button type="submit" class="rv-btn rv-btn-primary"><i class="bi bi-search"></i> Search</button>
       <a href="{{ url_for('admin.reports') }}" class="rv-btn rv-btn-secondary"><i class="bi bi-x"></i> Clear</a>
-      <!-- Bulk export — passes current filters so export matches what's on screen -->
       <a href="{{ url_for('admin.export_reports_csv') }}?status={{ current_status }}&severity={{ current_severity }}&mode={{ current_mode }}&search={{ current_search }}"
         class="rv-btn rv-btn-secondary">
         <i class="bi bi-download"></i> Export CSV
       </a>
-      <span class="rpt-count">{{ total }} report{{ 's' if total != 1 }}</span>
+      
     </div>
-
+    <span class="rpt-count" style="margin-left:0;width:100%;text-align:right">{{ total }} report{{ 's' if total != 1 }}</span>
   </form>
 
   <!-- Active filter chips -->

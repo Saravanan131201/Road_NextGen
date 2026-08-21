@@ -255,26 +255,27 @@
         <div class="rv-card-title"><i class="bi bi-bell-fill me-2 text-danger"></i>Live Alerts</div>
         <span style="font-size:11px;background:rgba(239,68,68,.12);color:#dc2626;padding:2px 8px;border-radius:20px">Real-time</span>
       </div>
-       <div id="liveAlerts" style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:0">
-        {% set alert_shown = namespace(count=0) %}
-        {% for r in reports %}
-          {% if r.severity in ['critical','high'] and r.status != "completed" and alert_shown.count < 10 %}
-          {% set alert_shown.count = alert_shown.count + 1 %}
-          <div class="alert-item {{ r.severity }}">
-            <div style="width:8px;height:8px;border-radius:50%;background:{{ '#ef4444' if r.severity=='critical' else '#f97316' }};margin-top:5px;flex-shrink:0"></div>
-            <div style="min-width:0">
-              <div style="font-size:12.5px;font-weight:600">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }} — {{ r.severity|upper }}</div>
-              <div style="font-size:11px;color:var(--rv-text-muted);margin-top:1px">{{ r.location.address if r.location and r.location.address else 'Unknown location' }}</div>
-              <div style="font-size:11px;color:var(--rv-text-light);margin-top:1px">{{ time_ago(r.created_at) if r.created_at else '' }}</div>
-            </div>
+      <div id="liveAlerts" style="flex:1;overflow-y:auto;max-height:600px;display:flex;flex-direction:column;gap:0">
+      {% set ns = namespace(found=0) %}
+      {% for r in reports %}
+        {% if r.severity in ['critical','high'] and r.status != 'completed' %}
+        {% set ns.found = ns.found + 1 %}
+        <div class="alert-item {{ r.severity }}">
+          <div style="width:8px;height:8px;border-radius:50%;background:{{ '#ef4444' if r.severity=='critical' else '#f97316' }};margin-top:5px;flex-shrink:0"></div>
+          <div style="min-width:0">
+            <div style="font-size:12.5px;font-weight:600">{{ (r.display_names | join(', ')) if r.display_names else (r.damage_types | map('replace', '_', ' ') | list | join(', ') | title) }} — {{ r.severity|upper }}</div>
+            <div style="font-size:11px;color:var(--rv-text-muted);margin-top:1px">{{ r.location.address if r.location and r.location.address else 'Unknown location' }}</div>
+            <div style="font-size:11px;color:var(--rv-text-light);margin-top:1px">{{ time_ago(r.created_at) if r.created_at else '' }}</div>
           </div>
-          {% endif %}
-        {% else %}
-          <div style="text-align:center;padding:24px;color:var(--rv-text-muted);font-size:13px">
-            <i class="bi bi-shield-check d-block mb-2" style="font-size:24px;color:var(--rv-success)"></i>No critical alerts
-          </div>
-          {% endfor %}
-        <div style="flex:1"></div>
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if ns.found == 0 %}
+      <div style="text-align:center;padding:24px;color:var(--rv-text-muted);font-size:13px">
+        <i class="bi bi-shield-check d-block mb-2" style="font-size:24px;color:var(--rv-success)"></i>No critical alerts
+      </div>
+      {% endif %}
+      <div style="flex:1"></div>
       </div>
     </div>
   </div>

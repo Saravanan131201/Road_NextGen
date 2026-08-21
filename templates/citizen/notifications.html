@@ -1,11 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Notifications — Road NextGen{% endblock %}
 {% block page_title %}Notifications{% endblock %}
-
-
-
 {% block profile_link %}<li><a class="dropdown-item" href="{{ url_for('citizen.profile') }}"><i class="bi bi-person me-2"></i>Profile</a></li>{% endblock %}
-
 {% block content %}
 <div class="rv-card">
   <div class="rv-card-header mb-4">
@@ -20,15 +16,25 @@
     {% endif %}
   </div>
 
-  {% set type_icons = {'info': 'info-circle', 'warning': 'exclamation-triangle', 'success': 'check-circle', 'critical': 'exclamation-octagon'} %}
+  {% set type_icons  = {'info': 'info-circle', 'warning': 'exclamation-triangle', 'success': 'check-circle', 'critical': 'exclamation-octagon'} %}
   {% set type_colors = {'info': 'var(--rv-accent)', 'warning': 'var(--rv-warning)', 'success': 'var(--rv-success)', 'critical': 'var(--rv-danger)'} %}
 
   {% if notifications %}
   <div style="display:flex;flex-direction:column;gap:8px">
     {% for n in notifications %}
-    <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:{{ 'var(--rv-primary-glow)' if not n.is_read else 'var(--rv-surface-2)' }};border:1px solid var(--rv-border);border-left:3px solid {{ type_colors.get(n.type,'var(--rv-accent)') }};border-radius:var(--rv-radius-sm);opacity:{{ '0.7' if n.is_read else '1' }};cursor:pointer;transition:opacity .2s"
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;
+                background:{{ 'var(--rv-primary-glow)' if not n.is_read else 'var(--rv-surface-2)' }};
+                border:1px solid var(--rv-border);
+                border-left:3px solid {{ type_colors.get(n.type, 'var(--rv-accent)') }};
+                border-radius:var(--rv-radius-sm);
+                opacity:{{ '0.7' if n.is_read else '1' }};
+                cursor:pointer;transition:opacity .2s"
          onclick="readNotif('{{ n._id }}')">
-      <div style="width:36px;height:36px;border-radius:50%;background:{{ type_colors.get(n.type,'var(--rv-accent)') }}18;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:{{ type_colors.get(n.type,'var(--rv-accent)') }}">
+      <div style="width:36px;height:36px;border-radius:50%;
+                  background:{{ type_colors.get(n.type,'var(--rv-accent)') }}18;
+                  display:flex;align-items:center;justify-content:center;
+                  flex-shrink:0;font-size:16px;
+                  color:{{ type_colors.get(n.type,'var(--rv-accent)') }}">
         <i class="bi bi-{{ type_icons.get(n.type,'info-circle') }}"></i>
       </div>
       <div style="flex:1;min-width:0">
@@ -44,6 +50,7 @@
     </div>
     {% endfor %}
   </div>
+
   {% else %}
   <div style="text-align:center;padding:72px 24px;color:var(--rv-text-muted)">
     <i class="bi bi-bell-slash" style="font-size:56px;display:block;margin-bottom:16px;color:var(--rv-text-light)"></i>
@@ -57,11 +64,11 @@
 {% block scripts %}
 <script>
 async function readNotif(id) {
-  await fetch(`/api/notifications/${id}/read`, {method: 'POST'});
+  await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
   location.reload();
 }
 async function markAll() {
-  await fetch('/api/notifications/read-all', {method: 'POST'});
+  await fetch('/api/notifications/read-all', { method: 'POST' });
   location.reload();
 }
 </script>

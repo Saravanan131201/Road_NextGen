@@ -1,6 +1,6 @@
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, current_app)
-from extensions import mongo, oauth, mail
+from extensions import mongo, oauth
 from models.user import User
 from utils.helpers import serialize_doc
 from flask_mail import Message
@@ -40,29 +40,50 @@ def _generate_otp(length=6):
 
 
 def _send_otp_email(to_email: str, otp: str):
-    msg = Message(
-        subject="Your Road NextGen Login Code",
-        recipients=[to_email],
-        html=f"""
-        <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;
-                    background:#f0f4f8;padding:32px;border-radius:16px;">
-          <h2 style="color:#1e40af;margin-bottom:8px;">Road NextGen</h2>
-          <p style="color:#334155;font-size:15px;margin-bottom:4px;">
-            Your one-time login code is:
-          </p>
-          <div style="background:#1e40af;color:#fff;font-size:36px;font-weight:800;
-                      letter-spacing:12px;text-align:center;padding:20px;
-                      border-radius:12px;margin:20px 0;font-family:monospace;">
-            {otp}
-          </div>
-          <p style="color:#64748b;font-size:13px;">
-            This code expires in <strong>10 minutes</strong>.<br>
-            If you didn't request this, ignore this email.
-          </p>
-        </div>
-        """
+    import requests
+
+    expiry_mins  = current_app.config.get("OTP_EXPIRY_SECONDS", 600) // 60
+    sender_name  = current_app.config.get("MAIL_SENDER_NAME", "Road NextGen")
+    from_address = current_app.config["MAIL_FROM_ADDRESS"]
+    api_key      = current_app.config["PROMAILER_API_KEY"]
+    smtp_id      = current_app.config["PROMAILER_SMTP_ID"]
+
+    html = f"""
+    <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;
+                background:#f0f4f8;padding:32px;border-radius:16px;">
+      <h2 style="color:#1e40af;margin-bottom:8px;">Road NextGen</h2>
+      <p style="color:#334155;font-size:15px;margin-bottom:4px;">
+        Your one-time login code is:
+      </p>
+      <div style="background:#1e40af;color:#fff;font-size:36px;font-weight:800;
+                  letter-spacing:12px;text-align:center;padding:20px;
+                  border-radius:12px;margin:20px 0;font-family:monospace;">
+        {otp}
+      </div>
+      <p style="color:#64748b;font-size:13px;">
+        This code expires in <strong>{expiry_mins} minutes</strong>.<br>
+        If you didn't request this, ignore this email.
+      </p>
+    </div>
+    """
+
+    response = requests.post(
+        "https://mailserver.automationlounge.com/api/v1/messages/send",
+        headers={
+            "Authorization": f"Bearer {api_key}"
+        },
+        data={
+            "to":           to_email,
+            "from":         f"{sender_name} <{from_address}>",
+            "subject":      "Your Road NextGen Login Code",
+            "html":         html,
+            "connectionId": smtp_id
+        },
+        timeout=60   # Promailer docs say up to 60s due to SMTP retries
     )
-    mail.send(msg)
+
+    if response.status_code not in (200, 201):
+        raise Exception(f"Promailer error {response.status_code}: {response.text}")
 
 
 # routes/auth.py  —  _upsert_citizen()

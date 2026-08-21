@@ -5,7 +5,7 @@ import cloudinary
 
 from pymongo import ASCENDING
 
-from extensions import mongo, socketio, oauth, mail
+from extensions import mongo, socketio, oauth
 
 def create_app():
     app = Flask(__name__)
@@ -23,7 +23,6 @@ def create_app():
             background=True
         )
 
-    mail.init_app(app)
 
     CORS(app)
     socketio.init_app(app, cors_allowed_origins="*", async_mode="eventlet")

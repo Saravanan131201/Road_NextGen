@@ -4,13 +4,13 @@
 
 
 {% block extra_css %}
-.user-row-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:box-shadow .2s;margin-bottom:6px}
+.user-row-card{background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:var(--rv-radius-sm);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;transition:box-shadow .2s;margin-bottom:8px;flex-wrap:nowrap}
 .user-row-card:hover{box-shadow:var(--rv-shadow)}
-.user-av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff}
-.role-tab-btn{padding:8px 18px;border-radius:8px;border:1.5px solid var(--rv-border);background:none;color:var(--rv-text-muted);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:inherit;transition:all .2s}
+.user-av{width:40px;height:40px;min-width:40px;border-radius:50%;object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff}
+.role-tab-btn{padding:7px 12px;border-radius:8px;border:1.5px solid var(--rv-border);background:none;color:var(--rv-text-muted);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;transition:all .2s;white-space:nowrap}
 .role-tab-btn.active{background:var(--rv-primary);color:#fff;border-color:var(--rv-primary)}
 .role-tab-btn:hover:not(.active){border-color:var(--rv-primary-light);color:var(--rv-primary-light)}
-.count-chip{font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.25);font-weight:700}
+.count-chip{font-size:10px;padding:1px 6px;border-radius:20px;background:rgba(255,255,255,.25);font-weight:700}
 .role-tab-btn:not(.active) .count-chip{background:var(--rv-surface-2);color:var(--rv-text-muted)}
 .filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px}
 
@@ -20,6 +20,50 @@
 .photo-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--rv-primary);margin:0 auto 8px;display:block}
 .photo-upload-hint{font-size:12px;color:var(--rv-text-muted)}
 
+/* ── Mobile responsive fixes ── */
+@media (max-width: 480px) {
+  /* Role tabs: scrollable row */
+  .role-tabs-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    flex-wrap: nowrap !important;
+  }
+  .role-tabs-row::-webkit-scrollbar { display: none; }
+  .role-tab-btn { flex-shrink: 0; font-size: 11px; padding: 6px 10px; }
+
+  /* Add Admin button full-width below tabs */
+  .tabs-and-add { flex-direction: column; align-items: stretch; gap: 10px; }
+  .tabs-and-add .rv-btn { width: 100%; justify-content: center; }
+
+  /* User cards: stack info better */
+  .user-row-card { padding: 12px; gap: 10px; }
+  .user-info-badges { flex-wrap: wrap; gap: 5px; }
+  .user-info-meta { flex-wrap: wrap; gap: 8px; }
+  .user-name { font-size: 13px !important; max-width: 140px !important; }
+
+  /* Action buttons: icon-only on mobile */
+  .user-action-area { flex-direction: column; gap: 4px; align-items: flex-end; }
+
+  /* Filter bar: full width inputs */
+  .filter-bar > div { min-width: 100% !important; }
+  .filter-bar { gap: 8px; }
+
+  /* Stat cards: 2 per row already, shrink text */
+  .rv-stat-value { font-size: 20px !important; }
+  .rv-stat-card { padding: 14px 10px; gap: 10px; }
+
+  /* Pagination: compact */
+  .rv-page-btn { width: 28px; height: 28px; font-size: 11px; }
+}
+
+@media (max-width: 375px) {
+  .user-name { max-width: 110px !important; }
+  .role-tab-btn { padding: 5px 8px; font-size: 10px; }
+}
 {% endblock %}
 
 {% block content %}
@@ -53,35 +97,40 @@
 </div>
 
 <!-- Role Tabs -->
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;justify-content:space-between">
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
+<div class="tabs-and-add" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;justify-content:space-between">
+  <div class="role-tabs-row" style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="role-tab-btn {{ 'active' if not current_role }}"
             onclick="filterRole('')">
-      <i class="bi bi-grid-2x2"></i> All
+      <i class="bi bi-grid-2x2"></i>
+      <span class="tab-label">All</span>
       <span class="count-chip">{{ total_users }}</span>
     </button>
     <button class="role-tab-btn {{ 'active' if current_role == 'citizen' }}"
             onclick="filterRole('citizen')" style="{{ 'background:#0891b2;border-color:#0891b2;color:#fff' if current_role=='citizen' else '' }}">
-      <i class="bi bi-person-walking"></i> Citizens
+      <i class="bi bi-person-walking"></i>
+      <span class="tab-label">Citizens</span>
       <span class="count-chip">{{ role_counts.get('citizen', 0) }}</span>
     </button>
     <button class="role-tab-btn {{ 'active' if current_role == 'crew' }}"
             onclick="filterRole('crew')" style="{{ 'background:#d97706;border-color:#d97706;color:#fff' if current_role=='crew' else '' }}">
-      <i class="bi bi-cone-striped"></i> Team Heads
+      <i class="bi bi-cone-striped"></i>
+      <span class="tab-label">Teams</span>
       <span class="count-chip">{{ role_counts.get('crew', 0) }}</span>
     </button>
     <button class="role-tab-btn {{ 'active' if current_role == 'admin' }}"
             onclick="filterRole('admin')" style="{{ 'background:#7c3aed;border-color:#7c3aed;color:#fff' if current_role=='admin' else '' }}">
-      <i class="bi bi-building"></i> Admins
+      <i class="bi bi-building"></i>
+      <span class="tab-label">Admins</span>
       <span class="count-chip">{{ role_counts.get('admin', 0) }}</span>
     </button>
-
   </div>
   <!-- Add Admin Button -->
   <button class="rv-btn rv-btn-primary" onclick="showAddAdminModal()">
-    <i class="bi bi-person-plus"></i> Add Admin
+    <i class="bi bi-person-plus"></i>
+    <span class="add-btn-label">Add Admin</span>
   </button>
 </div>
+
 
 <!-- Filter Bar (hidden for workers tab — workers use their own inline filters) -->
 {% if current_role != 'workers' %}
@@ -158,71 +207,79 @@
     'crew':    {'color': '#d97706', 'bg': 'rgba(217,119,6,.12)', 'icon': 'bi-cone-striped', 'label': 'Team Head'}
   }.get(u.role, {'color': '#64748b', 'bg': 'rgba(100,116,139,.12)', 'icon': 'bi-person', 'label': u.role|title}) %}
 
-  <div class="user-row-card" id="ucard-{{ u._id }}">
-    <!-- Avatar -->
-    {% if u.avatar %}
-    <img src="{{ u.avatar }}" class="user-av" alt="" style="background:var(--rv-border)"/>
-    {% else %}
-    <div class="user-av" style="background:{{ role_cfg.color }}">{{ (u.name or u.email or 'U')[0].upper() }}</div>
-    {% endif %}
-
-    <!-- Info -->
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-        <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">{{ u.name or '(no name)' }}</span>
-        <!-- Role badge -->
-        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:{{ role_cfg.bg }};color:{{ role_cfg.color }};white-space:nowrap">
-          <i class="bi {{ role_cfg.icon }} me-1"></i>{{ role_cfg.label }}
-        </span>
-        <!-- Team badge (crew) -->
-        {% if u.role == 'crew' and u.team %}
-        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--rv-surface-2);color:var(--rv-text-muted);border:1px solid var(--rv-border)">
-          {{ teams.get(u.team, {}).get('name', u.team) }}
-        </span>
-        {% endif %}
-        <!-- Active/Inactive -->
-        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:{{ 'rgba(16,185,129,.12)' if u.is_active else 'rgba(239,68,68,.12)' }};color:{{ '#059669' if u.is_active else '#dc2626' }}">
-          {{ '● Active' if u.is_active else '● Inactive' }}
-        </span>
-      </div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap">
-        {% if u.email %}
-        <span style="font-size:12px;color:var(--rv-text-muted)"><i class="bi bi-envelope me-1"></i>{{ u.email }}</span>
-        {% endif %}
-        {% if u.phone %}
-        <span style="font-size:12px;color:var(--rv-text-muted)"><i class="bi bi-phone me-1"></i>{{ u.phone }}</span>
-        {% endif %}
-        <span style="font-size:11px;color:var(--rv-text-light)">
-          {% set providers = u.auth_provider if u.auth_provider is iterable and u.auth_provider is not string else [u.auth_provider] %}
-          {% for p in providers %}
-            <i class="bi bi-{{ 'google' if p == 'google' else 'phone' if p == 'phone' else 'patch-check' if p == 'otp' else 'key' }} me-1"></i>{{ p | title }}{% if not loop.last %} + {% endif %}
-          {% endfor %}
-        </span>
-        <span style="font-size:11px;color:var(--rv-text-light)">Joined {{ u.created_at[:10] if u.created_at else '—' }}</span>
-      </div>
-    </div>
-
-    <!-- Replace the role change select in admin/users.html user rows -->
-    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-      {% if u._id != session.get('user_id') %}
-
-        {% if u.role in ('admin', 'citizen') %}
-        <!-- Toggle active status for admin and citizen only -->
-        <button class="rv-btn rv-btn-sm {{ 'rv-btn-secondary' if u.is_active else 'rv-btn-success' }}"
-                onclick="toggleStatus('{{ u._id }}', {{ 'true' if u.is_active else 'false' }}, this)"
-                title="{{ 'Deactivate' if u.is_active else 'Activate' }}">
-          <i class="bi bi-{{ 'person-slash' if u.is_active else 'person-check' }}"></i>
-        </button>
-        {% else %}
-        <!-- Crew managed via Team page -->
-        <span style="font-size:11px;color:var(--rv-text-muted);padding:0 8px;font-style:italic">Manage in Teams</span>
-        {% endif %}
-
+    <div class="user-row-card" id="ucard-{{ u._id }}">
+      <!-- Avatar -->
+      {% if u.avatar %}
+      <img src="{{ u.avatar }}" class="user-av" alt="" style="background:var(--rv-border)"/>
       {% else %}
-      <span style="font-size:12px;color:var(--rv-text-muted);padding:0 8px">(You)</span>
+      <div class="user-av" style="background:{{ role_cfg.color }}">{{ (u.name or u.email or 'U')[0].upper() }}</div>
       {% endif %}
+
+      <!-- Info -->
+      <div style="flex:1;min-width:0">
+        <!-- Name + badges row -->
+        <div class="user-info-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <span class="user-name" style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">{{ u.name or '(no name)' }}</span>
+          <!-- Role badge -->
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ role_cfg.bg }};color:{{ role_cfg.color }};white-space:nowrap;flex-shrink:0">
+            <i class="bi {{ role_cfg.icon }}"></i>
+            <span class="d-none d-sm-inline ms-1">{{ role_cfg.label }}</span>
+          </span>
+          <!-- Team badge (crew) -->
+          {% if u.role == 'crew' and u.team %}
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--rv-surface-2);color:var(--rv-text-muted);border:1px solid var(--rv-border);white-space:nowrap;flex-shrink:0">
+            {{ teams.get(u.team, {}).get('name', u.team) }}
+          </span>
+          {% endif %}
+          <!-- Active/Inactive -->
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:{{ 'rgba(16,185,129,.12)' if u.is_active else 'rgba(239,68,68,.12)' }};color:{{ '#059669' if u.is_active else '#dc2626' }};flex-shrink:0;white-space:nowrap">
+            {{ '● Active' if u.is_active else '● Inactive' }}
+          </span>
+        </div>
+
+        <!-- Contact + meta row -->
+        <div class="user-info-meta" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          {% if u.email %}
+          <span style="font-size:11px;color:var(--rv-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">
+            <i class="bi bi-envelope me-1"></i>{{ u.email }}
+          </span>
+          {% endif %}
+          {% if u.phone %}
+          <span style="font-size:11px;color:var(--rv-text-muted);white-space:nowrap">
+            <i class="bi bi-phone me-1"></i>{{ u.phone }}
+          </span>
+          {% endif %}
+          <span style="font-size:10px;color:var(--rv-text-light);white-space:nowrap">
+            {% set providers = u.auth_provider if u.auth_provider is iterable and u.auth_provider is not string else [u.auth_provider] %}
+            {% for p in providers %}
+              <i class="bi bi-{{ 'google' if p == 'google' else 'phone' if p == 'phone' else 'patch-check' if p == 'otp' else 'key' }} me-1"></i>{{ p | title }}{% if not loop.last %} + {% endif %}
+            {% endfor %}
+          </span>
+          <span style="font-size:10px;color:var(--rv-text-light);white-space:nowrap">
+            Joined {{ u.created_at[:10] if u.created_at else '—' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="user-action-area" style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        {% if u._id != session.get('user_id') %}
+          {% if u.role in ('admin', 'citizen') %}
+          <button class="rv-btn rv-btn-sm {{ 'rv-btn-secondary' if u.is_active else 'rv-btn-success' }}"
+                  onclick="toggleStatus('{{ u._id }}', {{ 'true' if u.is_active else 'false' }}, this)"
+                  title="{{ 'Deactivate' if u.is_active else 'Activate' }}"
+                  style="padding:6px 8px">
+            <i class="bi bi-{{ 'person-slash' if u.is_active else 'person-check' }}"></i>
+            <span class="d-none d-md-inline">{{ 'Deactivate' if u.is_active else 'Activate' }}</span>
+          </button>
+          {% else %}
+          <span style="font-size:10px;color:var(--rv-text-muted);padding:0 4px;font-style:italic;white-space:nowrap">Teams</span>
+          {% endif %}
+        {% else %}
+        <span style="font-size:11px;color:var(--rv-text-muted);padding:0 6px">(You)</span>
+        {% endif %}
+      </div>
     </div>
-  </div>
   {% endfor %}
 </div>
 

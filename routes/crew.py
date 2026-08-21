@@ -383,10 +383,10 @@ def export_team_history_csv():
             report_id,
             t.get("priority", ""),
             t_status,
-            t["created_at"].strftime("%Y-%m-%d %H:%M") if t.get("created_at") else "",
+            _fmt_dt(t["created_at"]) if t.get("created_at") else "",
             due.strftime("%Y-%m-%d")             if due       else "No due date",
-            started.strftime("%Y-%m-%d %H:%M")   if started   else "",
-            completed.strftime("%Y-%m-%d %H:%M") if completed else "",
+            _fmt_dt(started)   if started   else "",
+            _fmt_dt(completed) if completed else "",
             on_time_flag,
             days_variance,
             workers_str,
@@ -423,7 +423,7 @@ def export_worker_history_csv(worker_id):
     if not worker or worker.get("team") != team_key:
         return "Worker not found", 404
 
-    now   = _fmt_dt(datetime.utcnow())
+    now   = datetime.utcnow()
     tasks = list(mongo.db.tasks.find({"assigned_workers": worker_id}).sort("created_at", -1))
 
     total       = len(tasks)
@@ -435,7 +435,7 @@ def export_worker_history_csv(worker_id):
     for t in tasks:
         t_status  = t.get("status", "")
         due       = t.get("due_date")
-        completed = _fmt_dt(t.get("completed_at"))
+        completed = t.get("completed_at")
         if t_status == "completed":
             if due and completed and completed <= due:
                 on_time += 1
@@ -466,7 +466,7 @@ def export_worker_history_csv(worker_id):
 
     # ── Worker summary ──
     writer.writerow(["=== WORKER TASK HISTORY REPORT ==="])
-    writer.writerow(["Generated At", now.strftime("%Y-%m-%d %H:%M:%S UTC")])
+    writer.writerow(["Generated At", _fmt_dt(now)])
     writer.writerow([])
     writer.writerow(["Worker Name",  worker.get("name", "")])
     writer.writerow(["Phone",        worker.get("phone", "")])
@@ -496,8 +496,8 @@ def export_worker_history_csv(worker_id):
     for i, t in enumerate(tasks, 1):
         t_status  = t.get("status", "")
         due       = t.get("due_date")
-        completed = _fmt_dt(t.get("completed_at"))
-        started   = _fmt_dt(t.get("started_at"))
+        completed = t.get("completed_at")
+        started   = t.get("started_at")
 
         if t_status == "completed":
             on_time_flag = "Yes" if (due and completed and completed <= due) else "No"
@@ -541,10 +541,10 @@ def export_worker_history_csv(worker_id):
             report_id,
             t.get("priority", ""),
             t_status,
-            t["created_at"].strftime("%Y-%m-%d %H:%M") if t.get("created_at") else "",
+            _fmt_dt(t["created_at"]) if t.get("created_at") else "",
             due.strftime("%Y-%m-%d")             if due       else "No due date",
-            started   if started   else "",
-            completed.strftime("%Y-%m-%d %H:%M") if completed else "",
+            _fmt_dt(started)   if started   else "",
+            _fmt_dt(completed) if completed else "",
             on_time_flag,
             days_variance,
             all_workers_str,

@@ -755,7 +755,7 @@ def export_team_task_history(team):
         return jsonify({"error": "Invalid team"}), 400
 
     team_cfg = TEAMS[team]
-    now      = _fmt_dt(datetime.utcnow())
+    now      = datetime.utcnow()
 
     # Fetch all tasks assigned to this team
     tasks = list(mongo.db.tasks.find({"assigned_team": team}).sort("created_at", -1))
@@ -769,7 +769,7 @@ def export_team_task_history(team):
     for t in tasks:
         t_status  = t.get("status", "")
         due       = t.get("due_date")
-        completed = _fmt_dt(t.get("completed_at"))
+        completed = t.get("completed_at")
         if t_status == "completed":
             if due and completed and completed <= due:
                 completed_on_time += 1
@@ -805,7 +805,7 @@ def export_team_task_history(team):
 
     # ── Team Summary ──
     writer.writerow(["=== TEAM TASK HISTORY REPORT ==="])
-    writer.writerow(["Generated At", now])
+    writer.writerow(["Generated At", _fmt_dt(now)])
     writer.writerow([])
     writer.writerow(["Team Name",          team_cfg["name"]])
     writer.writerow(["Handles Severity",   team_cfg["severity"]])
@@ -845,8 +845,8 @@ def export_team_task_history(team):
     for i, t in enumerate(tasks, 1):
         t_status  = t.get("status", "")
         due       = t.get("due_date")
-        completed = _fmt_dt(t.get("completed_at"))
-        started   = _fmt_dt( t.get("started_at"))
+        completed = t.get("completed_at")
+        started   = t.get("started_at")
 
         # On-time flag
         if t_status == "completed":
@@ -898,8 +898,8 @@ def export_team_task_history(team):
             t_status,
             _fmt_dt(t["created_at"]) if t.get("created_at") else "",
             due.strftime("%Y-%m-%d")       if due       else "No due date",
-            started  if started   else "",
-            completed if completed else "",
+            _fmt_dt(started)  if started   else "",
+            _fmt_dt(completed) if completed else "",
             on_time,
             days_variance,
             workers_str,
@@ -1239,7 +1239,7 @@ def export_worker_csv(worker_id):
     for t in tasks:
         t_status  = t.get("status", "")
         due       = t.get("due_date")
-        completed = _fmt_dt(t.get("completed_at"))
+        completed = t.get("completed_at")
 
         if t_status == "completed":
             if due and completed and completed <= due:
@@ -1276,16 +1276,14 @@ def export_worker_csv(worker_id):
             maps_link = f"https://www.google.com/maps/search/{site_address}"
 
         is_completed     = t_status == "completed"
-        completed_date_s = completed.strftime("%Y-%m-%d") if completed else ""
-        due_date_s       = due.strftime("%Y-%m-%d") if due else ""
 
         on_time_flag = "No"
-        if is_completed and completed_date_s and due_date_s:
-            on_time_flag = "Yes" if completed_date_s <= due_date_s else "No"
+        if is_completed and completed and due:
+            on_time_flag = "Yes" if completed <= due else "No"
 
         late_flag = "No"
-        if is_completed and completed_date_s and due_date_s:
-            late_flag = "Yes" if completed_date_s > due_date_s else "No"
+        if is_completed and completed and due:
+            late_flag = "Yes" if completed > due else "No"
 
         not_done_flag = "No"
         if not is_completed and due and now > due:
@@ -1297,9 +1295,9 @@ def export_worker_csv(worker_id):
             "maps_link":      maps_link,
             "photo_before":   photo_before,
             "photo_after":    photo_after,
-            "assigned_date":  t["created_at"].strftime("%Y-%m-%d") if t.get("created_at") else "",
-            "due_date":       due_date_s,
-            "completed_date": completed_date_s,
+            "assigned_date":  t["created_at"] if t.get("created_at") else "",
+            "due_date":       due.strftime("%Y-%m-%d"),
+            "completed_date": completed,
             "on_time":        on_time_flag,
             "late":           late_flag,
             "not_completed":  not_done_flag,

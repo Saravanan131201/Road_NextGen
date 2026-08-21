@@ -101,6 +101,15 @@ const DAMAGE_DISPLAY_MAP = {
   longitudinal_cracking: 'Longitudinal Cracking',
   other: 'Other'
 };
+
+const SEV_COLORS = {
+  critical: '#ef4444',   // red
+  high:     '#f97316',   // orange
+  medium:   '#eab308',   // yellow
+  low:      '#22c55e'    // green
+};
+
+
 // Severity Chart
 const sevCtx = document.getElementById('severityChart').getContext('2d');
 const sevData = {{ severity_dist | tojson }};
@@ -110,7 +119,7 @@ new Chart(sevCtx, {
     labels: sevData.map(d => d._id || 'unknown'),
     datasets: [{
       data: sevData.map(d => d.count),
-      backgroundColor: ['#10b981','#f59e0b','#f97316','#ef4444'],
+      backgroundColor: sevData.map(d => SEV_COLORS[d._id] || '#94a3b8'),
       borderWidth: 0, borderRadius: 4
     }]
   },
@@ -179,7 +188,7 @@ fetch('/api/reports/all').then(r=>r.json()).then(d=>{
   (d.reports||[]).forEach(rep => {
     const c = rep.location?.coordinates;
     if (!c || !c[0]) return;
-    const clr = {low:'#10b981',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[rep.severity]||'#94a3b8';
+    const clr = SEV_COLORS[rep.severity] || '#94a3b8';
     const dmgLabel = rep.display_names?.length ? rep.display_names.join(', ') : (rep.damage_types||[]).map(dt=>DAMAGE_DISPLAY_MAP[dt]||dt.replace(/_/g,' ')).join(', ');
     L.circleMarker([c[1],c[0]],{radius:rep.severity==='critical'?14:rep.severity==='high'?11:8,fillColor:clr,color:'#fff',weight:2,fillOpacity:0.85}).addTo(hotMap).bindPopup(`<b>${dmgLabel}</b><br><span style="color:${clr}">${rep.severity}</span>`);
   });
