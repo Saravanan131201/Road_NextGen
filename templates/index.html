@@ -924,11 +924,11 @@ footer span{color:var(--teal-l)}
               onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
               <i class="bi bi-clipboard-data" style="font-size:20px;color:var(--blue);"></i>All Reports
             </a>
-            <a href="{{ url_for('admin.workers') }}"
+            <a href="{{ url_for('admin.crew_management') }}"
               style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;transition:all .18s;"
               onmouseover="this.style.borderColor='rgba(30,64,175,.35)';this.style.background='rgba(30,64,175,.04)'"
               onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface-1)'">
-              <i class="bi bi-people-fill" style="font-size:20px;color:var(--teal);"></i>Manage Crew
+              <i class="bi bi-people-fill" style="font-size:20px;color:var(--teal);"></i>Manage Crew Teams
             </a>
           </div>
           {% elif user.role == 'crew' %}
@@ -1250,9 +1250,9 @@ footer span{color:var(--teal-l)}
           style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
           <i class="bi bi-clipboard-data" style="font-size:22px;color:var(--blue);"></i>All Reports
         </a>
-        <a href="{{ url_for('admin.workers') }}"
+        <a href="{{ url_for('admin.crew_management') }}"
           style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;">
-          <i class="bi bi-people-fill" style="font-size:22px;color:var(--teal);"></i>Manage Crew
+          <i class="bi bi-people-fill" style="font-size:22px;color:var(--teal);"></i>Manage Crew Teams
         </a>
       </div>
       {% elif user.role == 'crew' %}
