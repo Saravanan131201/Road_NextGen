@@ -1306,26 +1306,66 @@ footer span{color:var(--teal-l)}
       <!-- Citizen -->
       <div id="mob-panel-citizen">
         <div class="role-pill citizen"><i class="bi bi-person-walking"></i>Citizen Portal</div>
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.6">Enter your Gmail to receive a one-time code.</p>
-        <form method="POST" action="{{ url_for('auth.citizen_send_otp') }}">
-          {% if request.args.get('show_name')=='1' %}
-          <div class="f-group">
-            <label class="f-label">Your Name</label>
-            <input type="text" name="name" class="f-input" placeholder="E.g. Arjun Kumar" required value="{{ request.args.get('prefill_name','') }}" autocomplete="name"/>
+
+        <!-- EMAIL STEP -->
+        <div id="mob-step-email" {% if request.args.get('step')=='otp' %}style="display:none"{% endif %}>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.6">Enter your Gmail to receive a one-time code.</p>
+          <form method="POST" action="{{ url_for('auth.citizen_send_otp') }}">
+            {% if request.args.get('show_name')=='1' %}
+            <div class="f-group">
+              <label class="f-label">Your Name</label>
+              <input type="text" name="name" class="f-input" placeholder="E.g. Arjun Kumar" required value="{{ request.args.get('prefill_name','') }}" autocomplete="name"/>
+            </div>
+            {% endif %}
+            <div class="f-group">
+              <label class="f-label">Gmail Address</label>
+              <input type="email" name="email" class="f-input" placeholder="you@gmail.com" required autocomplete="email" value="{{ request.args.get('prefill_email','') }}"/>
+            </div>
+            <button type="submit" class="btn-main btn-primary-solid mb-3"><i class="bi bi-envelope-at"></i>Send OTP Code</button>
+          </form>
+          <div class="divider">or</div>
+          <button type="button" class="btn-google" onclick="openTermsModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
+          <p class="login-footer">Only <strong>@gmail.com</strong> accounts accepted.</p>
+        </div>
+
+        <!-- OTP STEP -->
+        <div id="mob-step-otp" {% if request.args.get('step')!='otp' %}style="display:none"{% endif %}>
+          <div class="f-alert info" style="margin-bottom:16px">
+            <i class="bi bi-envelope-check"></i>
+            <span>Code sent to <strong>{{ request.args.get('otp_email','your email') }}</strong>. Check inbox and spam.</span>
           </div>
-          {% endif %}
-          <div class="f-group">
-            <label class="f-label">Gmail Address</label>
-            <input type="email" name="email" class="f-input" placeholder="you@gmail.com" required autocomplete="email" value="{{ request.args.get('prefill_email','') }}"/>
+          <form method="POST" action="{{ url_for('auth.citizen_verify_otp') }}">
+            <input type="hidden" name="otp_email" value="{{ request.args.get('otp_email','') }}"/>
+            <label class="f-label" style="text-align:center;display:block;margin-bottom:10px">Enter 6-digit code</label>
+            <div class="otp-row" id="mobOtpBoxes">
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+              <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+            </div>
+            <input type="hidden" name="otp" id="mobOtpHidden"/>
+            <div class="timer-row">Code expires in <span class="timer-val" id="mobOtpTimer">10:00</span></div>
+            <button type="submit" class="btn-main btn-primary-solid mb-3" onclick="assembleMobOtp()">
+              <i class="bi bi-shield-check"></i>Verify &amp; Sign In
+            </button>
+          </form>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+            <form method="POST" action="{{ url_for('auth.citizen_resend_otp') }}" style="margin:0">
+              <input type="hidden" name="otp_email" value="{{ request.args.get('otp_email','') }}"/>
+              <button type="submit" class="btn-sm-link" id="mobResendBtn" disabled>
+                <i class="bi bi-arrow-clockwise"></i>Resend code
+              </button>
+            </form>
+            <a href="{{ url_for('auth.login', tab='citizen') }}" class="btn-sm-link">
+              <i class="bi bi-arrow-left"></i>Different email
+            </a>
           </div>
-          <button type="submit" class="btn-main btn-primary-solid mb-3"><i class="bi bi-envelope-at"></i>Send OTP Code</button>
-        </form>
-        <div class="divider">or</div>
-        <button type="button" class="btn-google" onclick="openTermsModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Continue with Google
-        </button>
-        <p class="login-footer">Only <strong>@gmail.com</strong> accounts accepted.</p>
+        </div>
       </div>
 
       <!-- Admin -->
@@ -1615,6 +1655,50 @@ function assembleOtp(){
       if(rb) rb.disabled=false;
     }
   },1000);
+})();
+
+
+/* ── Mobile OTP box behaviour ── */
+(function initMobOtpBoxes(){
+  var boxes = document.querySelectorAll('#mobOtpBoxes .otp-box');
+  boxes.forEach(function(box, i){
+    box.addEventListener('input', function(){
+      box.value = box.value.replace(/\D/g, '');
+      if(box.value.length === 1 && i < boxes.length - 1) boxes[i+1].focus();
+    });
+    box.addEventListener('keydown', function(e){
+      if(e.key === 'Backspace' && !box.value && i > 0) boxes[i-1].focus();
+    });
+    box.addEventListener('paste', function(e){
+      var txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      boxes.forEach(function(b, j){ b.value = txt[j] || ''; });
+      boxes[Math.min(txt.length, boxes.length - 1)].focus();
+      e.preventDefault();
+    });
+  });
+})();
+
+function assembleMobOtp(){
+  var boxes = document.querySelectorAll('#mobOtpBoxes .otp-box');
+  document.getElementById('mobOtpHidden').value = Array.from(boxes).map(function(b){ return b.value; }).join('');
+}
+
+/* ── Mobile OTP countdown timer ── */
+(function initMobTimer(){
+  var otpStep = document.getElementById('mob-step-otp');
+  if(!otpStep || otpStep.style.display === 'none') return;
+  var secs = 600;
+  var t = setInterval(function(){
+    secs--;
+    var m = Math.floor(secs / 60), s = secs % 60;
+    var el = document.getElementById('mobOtpTimer');
+    if(el) el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    if(secs <= 0){ clearInterval(t); if(el) el.textContent = 'Expired'; }
+    if(secs === 540){
+      var rb = document.getElementById('mobResendBtn');
+      if(rb) rb.disabled = false;
+    }
+  }, 1000);
 })();
 
 /* ── Sync active_tab from Jinja to mobile role tabs ── */
