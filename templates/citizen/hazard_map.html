@@ -178,12 +178,18 @@ function initMap() {
   loadReports();
 
   if (navigator.geolocation) {
+    // Subtle loading indicator in the nearby list while auto-GPS resolves
+    const listEl = document.getElementById('nearbyList');
+    if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--rv-text-muted);font-size:13px"><span class="spinner-border spinner-border-sm me-2"></span>Detecting your location…</div>';
     navigator.geolocation.getCurrentPosition(pos => {
       if (refPoint.lat) return;
       refPoint = {lat:pos.coords.latitude, lng:pos.coords.longitude, label:'your location'};
       placeUserMarker(refPoint.lat, refPoint.lng);
       updateNearbyList();
-    }, ()=>{});
+      showToast('Location detected — showing nearby hazards.','success');
+    }, ()=>{
+      updateNearbyList();
+    }, { timeout: 10000 });
   }
 }
 
@@ -368,13 +374,25 @@ function focusRep(lat, lng) {
 // ── My Location ───────────────────────────────────────────────────────────────
 function gotoMyLoc() {
   if (!navigator.geolocation) { showToast('Geolocation not supported.','warning'); return; }
+  // Show loading on GPS button
+  const gpsBtn = document.querySelector('button[onclick="gotoMyLoc()"]');
+  const origHTML = gpsBtn ? gpsBtn.innerHTML : '';
+  if (gpsBtn) {
+    gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:13px;height:13px;border-width:2px"></span>';
+    gpsBtn.disabled = true;
+  }
   navigator.geolocation.getCurrentPosition(pos=>{
     const {latitude:lat,longitude:lng}=pos.coords;
     placeUserMarker(lat,lng);
     hMap.flyTo([lat,lng],15,{duration:1.4});
     refPoint={lat,lng,label:'your location'};
     updateNearbyList();
-  }, ()=>showToast('Could not get GPS.','warning'));
+    if (gpsBtn) { gpsBtn.innerHTML = origHTML; gpsBtn.disabled = false; }
+    showToast('Location detected successfully.','success');
+  }, ()=>{
+    if (gpsBtn) { gpsBtn.innerHTML = origHTML; gpsBtn.disabled = false; }
+    showToast('Could not get GPS.','warning');
+  }, { timeout: 10000 });
 }
 
 function placeUserMarker(lat,lng) {

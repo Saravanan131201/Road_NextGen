@@ -53,6 +53,64 @@
 .annotated-popup-body{padding:18px}
 .annotated-popup-footer{padding:12px 18px;border-top:1px solid var(--rv-border);display:flex;gap:10px;justify-content:flex-end}
 
+/* ── Camera enlarged ── */
+#camWrap-ai,
+#camWrap-manual {
+  display: none;
+  margin-top: 14px;
+}
+#camWrap-ai video,
+#camWrap-manual video {
+  width: 100%;
+  border-radius: var(--rv-radius);
+  background: #000;
+  object-fit: cover;
+  display: block;
+  /* Desktop */
+  height: 420px;
+  max-height: 420px;
+}
+@media (max-width: 767px) {
+  #camWrap-ai video,
+  #camWrap-manual video {
+    /* Fill almost full viewport height on mobile */
+    height: calc(100svh - 220px);
+    max-height: calc(100svh - 220px);
+    min-height: 340px;
+  }
+  #camWrap-ai .rv-btn,
+  #camWrap-manual .rv-btn {
+    /* Larger tap targets on mobile */
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+}
+
+/* ── Confirm preview enlarged ── */
+#camConfirmWrap-ai img,
+#camConfirmWrap-manual img {
+  width: 100%;
+  border-radius: var(--rv-radius-sm);
+  object-fit: cover;
+  display: block;
+  /* Desktop */
+  height: 380px;
+  max-height: 380px;
+}
+@media (max-width: 767px) {
+  #camConfirmWrap-ai img,
+  #camConfirmWrap-manual img {
+    height: calc(100svh - 260px);
+    max-height: calc(100svh - 260px);
+    min-height: 300px;
+  }
+  #camConfirmWrap-ai .rv-btn,
+  #camConfirmWrap-manual .rv-btn {
+    padding: 12px 20px;
+    font-size: 15px;
+    flex: 1;
+  }
+}
 
 @media(max-width:991px) {
   .rv-sidebar.sidebar-open ~ * .leaflet-control-zoom,
@@ -103,10 +161,20 @@
 
           <!-- Camera -->
           <div id="camWrap-ai" style="display:none;margin-top:14px">
-            <video id="camStream-ai" autoplay playsinline style="width:100%;border-radius:var(--rv-radius);background:#000;max-height:240px;object-fit:cover"></video>
+            <video id="camStream-ai" autoplay playsinline></video>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
               <button class="rv-btn rv-btn-primary" onclick="capturePhoto('ai')"><i class="bi bi-camera-fill"></i> Capture</button>
               <button class="rv-btn rv-btn-secondary" onclick="closeCam('ai')">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Camera Capture Confirm -->
+          <div id="camConfirmWrap-ai" style="display:none;margin-top:14px">
+            <img id="camConfirmImg-ai" style="border:1px solid var(--rv-border)" alt="Captured preview"/>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+              <button class="rv-btn rv-btn-primary" onclick="confirmCapture('ai')"><i class="bi bi-check-lg"></i> Add</button>
+              <button class="rv-btn rv-btn-secondary" onclick="retakeCapture('ai')"><i class="bi bi-arrow-counterclockwise"></i> Retake</button>
+              <button class="rv-btn rv-btn-secondary" onclick="cancelCapture('ai')"><i class="bi bi-x-lg"></i> Cancel</button>
             </div>
           </div>
 
@@ -255,10 +323,20 @@
 
           <!-- Camera -->
           <div id="camWrap-manual" style="display:none;margin-top:14px">
-            <video id="camStream-manual" autoplay playsinline style="width:100%;border-radius:var(--rv-radius);background:#000;max-height:220px;object-fit:cover"></video>
+            <video id="camStream-manual" autoplay playsinline></video>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
               <button class="rv-btn rv-btn-primary" onclick="capturePhoto('manual')"><i class="bi bi-camera-fill"></i> Capture</button>
               <button class="rv-btn rv-btn-secondary" onclick="closeCam('manual')">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Camera Capture Confirm -->
+          <div id="camConfirmWrap-manual" style="display:none;margin-top:14px">
+            <img id="camConfirmImg-manual" style="border:1px solid var(--rv-border)" alt="Captured preview"/>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+              <button class="rv-btn rv-btn-primary" onclick="confirmCapture('manual')"><i class="bi bi-check-lg"></i> Add</button>
+              <button class="rv-btn rv-btn-secondary" onclick="retakeCapture('manual')"><i class="bi bi-arrow-counterclockwise"></i> Retake</button>
+              <button class="rv-btn rv-btn-secondary" onclick="cancelCapture('manual')"><i class="bi bi-x-lg"></i> Cancel</button>
             </div>
           </div>
 
@@ -430,6 +508,7 @@ const SEV_COLORS   = {low:'#22c55e',medium:'#fbbf24',high:'#f97316',critical:'#e
 let aiState = {file:null,originalUrl:'',originalPublicId:'',annotatedUrl:'',annotatedPublicId:'',detections:[],damageTypes:[],overallSeverity:'',recommendedTeam:''};
 
 let manualState = {file:null,uploadedUrl:'',originalPublicId:'',annotatedUrl:'',annotatedPublicId:'',aiDetections:[]};
+let pendingCapture = { ai: null, manual: null }; // holds blob awaiting user confirm
 let manualTypes = new Set();
 
 let locState = {
@@ -472,12 +551,45 @@ function capturePhoto(tab) {
   const video = document.getElementById(`camStream-${tab}`);
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video,0,0);
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  // Both AI and Manual: show confirm screen
   canvas.toBlob(blob => {
-    const file = new File([blob], `cap_${Date.now()}.jpg`, {type:'image/jpeg'});
-    closeCam(tab);
-    tab==='ai' ? processAIFile(file) : processManualFile(file);
+    pendingCapture[tab] = blob;
+    const confirmWrap = document.getElementById(`camConfirmWrap-${tab}`);
+    const confirmImg  = document.getElementById(`camConfirmImg-${tab}`);
+    confirmImg.src = URL.createObjectURL(blob);
+
+    // Pause video but keep stream alive for retake
+    video.pause();
+    document.getElementById(`camWrap-${tab}`).style.display = 'none';
+    confirmWrap.style.display = 'block';
   }, 'image/jpeg', 0.92);
+}
+
+function confirmCapture(tab) {
+  const blob = pendingCapture[tab];
+  if (!blob) return;
+  pendingCapture[tab] = null;
+  document.getElementById(`camConfirmWrap-${tab}`).style.display = 'none';
+  closeCam(tab);
+  const file = new File([blob], `cap_${Date.now()}.jpg`, {type:'image/jpeg'});
+  tab === 'ai' ? processAIFile(file) : processManualFile(file);
+}
+
+function retakeCapture(tab) {
+  pendingCapture[tab] = null;
+  document.getElementById(`camConfirmWrap-${tab}`).style.display = 'none';
+  // Resume the stream that's still alive
+  const video = document.getElementById(`camStream-${tab}`);
+  video.play();
+  document.getElementById(`camWrap-${tab}`).style.display = 'block';
+}
+
+function cancelCapture(tab) {
+  pendingCapture[tab] = null;
+  document.getElementById(`camConfirmWrap-${tab}`).style.display = 'none';
+  closeCam(tab);
 }
 
 // ─── Drag & drop ──────────────────────────────────────────────────────────────
@@ -765,12 +877,22 @@ async function reverseGeo(lat, lng) {
 
 function useGPS(tab) {
   if (!navigator.geolocation) { showToast('Geolocation not supported.','warning'); return; }
+  const gpsBtn = document.querySelector(`button[onclick="useGPS('${tab}')"]`);
+  const origHTML = gpsBtn ? gpsBtn.innerHTML : '';
+  if (gpsBtn) {
+    gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:13px;height:13px;border-width:2px"></span>';
+    gpsBtn.disabled = true;
+  }
   navigator.geolocation.getCurrentPosition(async pos => {
     const {latitude:lat, longitude:lng} = pos.coords;
     const address = await reverseGeo(lat, lng);
     setLocState(tab, lat, lng, address, 'gps');
+    if (gpsBtn) { gpsBtn.innerHTML = origHTML; gpsBtn.disabled = false; }
     showToast('GPS location set.','success');
-  }, () => showToast('Could not get GPS location.','warning'));
+  }, () => {
+    if (gpsBtn) { gpsBtn.innerHTML = origHTML; gpsBtn.disabled = false; }
+    showToast('Could not get GPS location.','warning');
+  }, { timeout: 10000 });
 }
 
 async function autoGPS(tab) {

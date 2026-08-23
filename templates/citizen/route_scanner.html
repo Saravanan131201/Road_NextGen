@@ -134,7 +134,7 @@
             <i class="bi bi-search loc-search-icon"></i>
             <div class="loc-suggestions" id="fromLocSuggestions"></div>
           </div>
-          <button class="rv-btn rv-btn-secondary rv-btn-sm" onclick="useCurrentLocation()" title="Use my GPS location">
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" id="gpsFromBtn" onclick="useCurrentLocation('from')" title="Use my GPS location">
             <i class="bi bi-geo-alt-fill text-primary"></i>
           </button>
           <button class="rv-btn rv-btn-secondary rv-btn-sm" id="pinFromBtn" onclick="startPinMode('from')" title="Pin origin on map">
@@ -165,6 +165,9 @@
             <i class="bi bi-search loc-search-icon"></i>
             <div class="loc-suggestions" id="toLocSuggestions"></div>
           </div>
+          <button class="rv-btn rv-btn-secondary rv-btn-sm" id="gpsToBtn" onclick="useCurrentLocation('to')" title="Use my GPS location">
+            <i class="bi bi-geo-alt-fill text-success"></i>
+          </button>
           <button class="rv-btn rv-btn-secondary rv-btn-sm" id="pinToBtn" onclick="startPinMode('to')" title="Pin destination on map">
             <i class="bi bi-pin-map text-success"></i>
           </button>
@@ -547,8 +550,15 @@ function loadHazardMarkers() {
 /* ════════════════════════════════════════════════════
    GEOLOCATION
 ════════════════════════════════════════════════════ */
-function useCurrentLocation() {
+async function useCurrentLocation(field = 'from') {
   if (!navigator.geolocation) { showToast('Geolocation not supported.', 'warning'); return; }
+  const btnId = field === 'from' ? 'gpsFromBtn' : 'gpsToBtn';
+  const btn = document.getElementById(btnId);
+  const origHTML = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:13px;height:13px;border-width:2px"></span>';
+    btn.disabled = true;
+  }
   navigator.geolocation.getCurrentPosition(async pos => {
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
     let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -557,13 +567,18 @@ function useCurrentLocation() {
       const d = await r.json();
       if (d.display_name) address = d.display_name.split(',').slice(0,4).join(', ');
     } catch(e) {}
-    fromCoords = [lat, lng];
-    document.getElementById('fromInput').value   = address.split(',').slice(0,3).join(',').trim();
-    document.getElementById('fromAddress').value = address;
-    placePinMarker('from', lat, lng);
-    showClearBtn('from');
-    showToast('Current location set.', 'success');
-  }, () => showToast('Could not get location.', 'warning'));
+    if (field === 'from') fromCoords = [lat, lng];
+    else toCoords = [lat, lng];
+    document.getElementById(`${field}Input`).value   = address.split(',').slice(0,3).join(',').trim();
+    document.getElementById(`${field}Address`).value = address;
+    placePinMarker(field, lat, lng);
+    showClearBtn(field);
+    if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+    showToast(`${field === 'from' ? 'Origin' : 'Destination'} set to current location.`, 'success');
+  }, () => {
+    if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+    showToast('Could not get location.', 'warning');
+  }, { timeout: 10000 });
 }
 
 /* ════════════════════════════════════════════════════

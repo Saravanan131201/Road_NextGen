@@ -229,10 +229,29 @@ function initDashMap() {
       }).catch(() => {});
   }
 
-  if (navigator.geolocation) {
+if (navigator.geolocation) {
+    // Show loading overlay on the map
+    const mapEl = document.getElementById('dashMap');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'dashMapLoading';
+    loadingDiv.style.cssText = 'position:absolute;inset:0;background:rgba(var(--rv-surface-rgb,255,255,255),.75);backdrop-filter:blur(2px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:var(--rv-radius)';
+    loadingDiv.innerHTML = '<div class="spinner-border text-primary" style="width:28px;height:28px"></div><div style="font-size:13px;font-weight:600;color:var(--rv-text-muted)">Fetching your location…</div>';
+    mapEl.style.position = 'relative';
+    mapEl.appendChild(loadingDiv);
+
     navigator.geolocation.getCurrentPosition(
-      pos => { dashMap.setView([pos.coords.latitude, pos.coords.longitude], 14); addMarkers(pos.coords.latitude, pos.coords.longitude); },
-      () => addMarkers(13.0827, 80.2707)
+      pos => {
+        dashMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
+        addMarkers(pos.coords.latitude, pos.coords.longitude);
+        loadingDiv.remove();
+        showToast('Location detected successfully.', 'success');
+      },
+      () => {
+        addMarkers(13.0827, 80.2707);
+        loadingDiv.remove();
+        showToast('Could not get GPS — showing default location.', 'warning');
+      },
+      { timeout: 10000 }
     );
   } else {
     addMarkers(13.0827, 80.2707);
