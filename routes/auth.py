@@ -42,48 +42,28 @@ def _generate_otp(length=6):
 def _send_otp_email(to_email: str, otp: str):
     import requests
 
-    expiry_mins  = current_app.config.get("OTP_EXPIRY_SECONDS", 600) // 60
-    sender_name  = current_app.config.get("MAIL_SENDER_NAME", "Road NextGen")
-    from_address = current_app.config["MAIL_FROM_ADDRESS"]
-    api_key      = current_app.config["PROMAILER_API_KEY"]
-    smtp_id      = current_app.config["PROMAILER_SMTP_ID"]
-
-    html = f"""
-    <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;
-                background:#f0f4f8;padding:32px;border-radius:16px;">
-      <h2 style="color:#1e40af;margin-bottom:8px;">Road NextGen</h2>
-      <p style="color:#334155;font-size:15px;margin-bottom:4px;">
-        Your one-time login code is:
-      </p>
-      <div style="background:#1e40af;color:#fff;font-size:36px;font-weight:800;
-                  letter-spacing:12px;text-align:center;padding:20px;
-                  border-radius:12px;margin:20px 0;font-family:monospace;">
-        {otp}
-      </div>
-      <p style="color:#64748b;font-size:13px;">
-        This code expires in <strong>{expiry_mins} minutes</strong>.<br>
-        If you didn't request this, ignore this email.
-      </p>
-    </div>
-    """
+    expiry_mins = current_app.config.get("OTP_EXPIRY_SECONDS", 600) // 60
+    mailer_url  = current_app.config["MAILER_SERVICE_URL"]   # your Vercel URL
+    api_secret  = current_app.config["MAILER_API_SECRET"]    # shared secret
 
     response = requests.post(
-        "https://mailserver.automationlounge.com/api/v1/messages/send",
+        f"{mailer_url}/send-otp",
         headers={
-            "Authorization": f"Bearer {api_key}"
+            "X-API-Secret": api_secret,
+            "Content-Type": "application/json"
         },
-        data={
-            "to":           to_email,
-            "from":         f"{sender_name} <{from_address}>",
-            "subject":      "Your Road NextGen Login Code",
-            "html":         html,
-            "connectionId": smtp_id
+        json={
+            "to_email":    to_email,
+            "otp":         otp,
+            "expiry_mins": expiry_mins
         },
-        timeout=60   # Promailer docs say up to 60s due to SMTP retries
+        timeout=30
     )
 
-    if response.status_code not in (200, 201):
-        raise Exception(f"Promailer error {response.status_code}: {response.text}")
+    if response.status_code != 200:
+        raise Exception(
+            f"Mailer service error {response.status_code}: {response.text}"
+        )
 
 
 # routes/auth.py  —  _upsert_citizen()

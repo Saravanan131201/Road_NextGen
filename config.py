@@ -12,10 +12,8 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
     # SMTP mail OTP login
-    PROMAILER_API_KEY  = os.getenv("PROMAILER_API_KEY")
-    PROMAILER_SMTP_ID  = os.getenv("PROMAILER_SMTP_ID")
-    MAIL_FROM_ADDRESS  = os.getenv("MAIL_FROM_ADDRESS")
-    MAIL_SENDER_NAME   = os.getenv("MAIL_SENDER_NAME", "Road NextGen")
+    MAILER_SERVICE_URL = os.environ.get("MAILER_SERVICE_URL")  
+    MAILER_API_SECRET  = os.environ.get("MAILER_API_SECRET")  
 
     OTP_EXPIRY_SECONDS  = int(os.getenv("OTP_EXPIRY_SECONDS", 600))
     OTP_MAX_TRIES       = int(os.getenv("OTP_MAX_TRIES", 5))

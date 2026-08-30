@@ -772,6 +772,11 @@ footer span{color:var(--teal-l)}
   #how-section{padding:60px 20px}
 }
 .hidden{display:none!important}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 </style>
 </head>
 <body>
@@ -1740,6 +1745,71 @@ document.getElementById('terms-modal').addEventListener('click', function(e){
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape') closeTermsModal();
 });
+
+
+/* ── Button loading states ── */
+(function initLoadingStates(){
+
+  /* ── OTP Send button (desktop + mobile) ── */
+  document.querySelectorAll('form[action*="send-otp"]').forEach(function(form){
+    form.addEventListener('submit', function(){
+      var btn = form.querySelector('button[type="submit"]');
+      if(!btn) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .75s linear infinite;">'
+        + '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>'
+        + '</svg>Sending OTP…</span>';
+    });
+  });
+
+  /* ── OTP Verify button (desktop + mobile) ── */
+  document.querySelectorAll('form[action*="verify-otp"]').forEach(function(form){
+    form.addEventListener('submit', function(){
+      var btn = form.querySelector('button[type="submit"]');
+      if(!btn) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .75s linear infinite;">'
+        + '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>'
+        + '</svg>Verifying…</span>';
+    });
+  });
+
+  /* ── Resend OTP button (desktop + mobile) ── */
+  document.querySelectorAll('form[action*="resend-otp"]').forEach(function(form){
+    form.addEventListener('submit', function(){
+      var btn = form.querySelector('button[type="submit"]');
+      if(!btn) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;">'
+        + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .75s linear infinite;">'
+        + '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>'
+        + '</svg>Resending…</span>';
+    });
+  });
+
+  /* ── Staff login (Admin + Crew, desktop + mobile) ── */
+  document.querySelectorAll('form[action*="staff/login"]').forEach(function(form){
+    form.addEventListener('submit', function(){
+      var btn  = form.querySelector('button[type="submit"]');
+      var role = (form.querySelector('input[name="role"]') || {}).value || '';
+      if(!btn) return;
+
+      var label = role === 'admin' ? 'Signing in as Admin…' : 'Signing in…';
+      var icon  = role === 'admin'
+        ? '<i class="bi bi-building"></i>'
+        : '<i class="bi bi-cone-striped"></i>';
+
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .75s linear infinite;">'
+        + '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>'
+        + '</svg>' + label + '</span>';
+    });
+  });
+
+})();
 
 </script>
 
