@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, request, jsonify, Response, redirect, url_for
+from flask import Blueprint, render_template, session, request, jsonify, Response
 from utils.decorators import admin_required
 from models.report import Report
 from models.user import User
@@ -14,8 +14,35 @@ from bson import ObjectId
 import bcrypt, csv, io, base64, re
 
 from extensions import mongo
+from flask import current_app
 
 admin_bp = Blueprint("admin", __name__)
+
+
+def _send_crew_assigned_email(to_email: str, name: str, damage_label: str,
+                               location_str: str, team_name: str,
+                               priority: str, due_date_str: str):
+    """Fire-and-forget crew-assigned email. Never raises."""
+    try:
+        import requests as _req
+        mailer_url = current_app.config["MAILER_SERVICE_URL"]
+        api_secret = current_app.config["MAILER_API_SECRET"]
+        _req.post(
+            f"{mailer_url}/send-crew-assigned",
+            headers={"X-API-Secret": api_secret, "Content-Type": "application/json"},
+            json={
+                "to_email":     to_email,
+                "name":         name,
+                "damage_label": damage_label,
+                "location_str": location_str,
+                "team_name":    team_name,
+                "priority":     priority,
+                "due_date_str": due_date_str,
+            },
+            timeout=30
+        )
+    except Exception as e:
+        print(f"[Assinged workers Mail] failed: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -260,7 +287,7 @@ def export_single_report_csv(report_id):
     writer = csv.writer(output)
 
     # ── Report section ──
-    writer.writerow(["=== REPORT DETAILS ==="])
+    writer.writerow(["REPORT DETAILS"])
     writer.writerow(["Field", "Value"])
 
     loc    = r.get("location", {})
@@ -299,7 +326,7 @@ def export_single_report_csv(report_id):
 
     # ── Task section ──
     writer.writerow([])
-    writer.writerow(["=== TASK DETAILS ==="])
+    writer.writerow(["TASK DETAILS"])
 
     task = Task.find_by_report_id(report_id)
     if not task:
@@ -327,7 +354,7 @@ def export_single_report_csv(report_id):
 
         # ── Team Head section ──
         writer.writerow([])
-        writer.writerow(["=== TEAM HEAD ==="])
+        writer.writerow(["TEAM HEAD"])
         if task.get("team_head_id"):
             th = mongo.db.users.find_one({"_id": ObjectId(task["team_head_id"])})
             if th:
@@ -342,7 +369,7 @@ def export_single_report_csv(report_id):
 
         # ── Workers section ──
         writer.writerow([])
-        writer.writerow(["=== ASSIGNED WORKERS ==="])
+        writer.writerow(["ASSIGNED WORKERS"])
         worker_ids = task.get("assigned_workers", [])
         if not worker_ids:
             writer.writerow(["No workers assigned."])
@@ -489,6 +516,20 @@ def assign_report(report_id):
             notif_type="info",
             data={"task_id": str(task["_id"]), "report_id": report_id}
         )
+
+        # Also send citizen an email
+        citizen = mongo.db.users.find_one({"_id": ObjectId(report["reporter_id"])})
+        if citizen and citizen.get("email"):
+            due_date_str = due_date.strftime("%d %b %Y") if due_date else ""
+            _send_crew_assigned_email(
+                to_email     = citizen["email"],
+                name         = citizen.get("name", "Citizen"),
+                damage_label = damage_label,
+                location_str = location_str,
+                team_name    = TEAMS[team_key]["name"],
+                priority     = priority,
+                due_date_str = due_date_str,
+            )
 
 
     from app import socketio
@@ -804,14 +845,14 @@ def export_team_task_history(team):
     writer = csv.writer(output)
 
     # ── Team Summary ──
-    writer.writerow(["=== TEAM TASK HISTORY REPORT ==="])
+    writer.writerow(["TEAM TASK HISTORY REPORT"])
     writer.writerow(["Generated At", _fmt_dt(now)])
     writer.writerow([])
     writer.writerow(["Team Name",          team_cfg["name"]])
     writer.writerow(["Handles Severity",   team_cfg["severity"]])
     writer.writerow(["Max Workers",        team_cfg["max_workers"]])
     writer.writerow([])
-    writer.writerow(["=== PERFORMANCE SUMMARY ==="])
+    writer.writerow(["PERFORMANCE SUMMARY"])
     writer.writerow(["Total Tasks",             total_tasks])
     writer.writerow(["Completed On Time",        completed_on_time])
     writer.writerow(["Completed Late",           completed_late])
@@ -821,7 +862,7 @@ def export_team_task_history(team):
     writer.writerow([])
 
     # ── Team Head ──
-    writer.writerow(["=== TEAM HEAD ==="])
+    writer.writerow(["TEAM HEAD"])
     th = mongo.db.users.find_one({"role": "crew", "team": team, "is_active": True})
     if th:
         writer.writerow(["Name",  th.get("name", "")])
@@ -832,7 +873,7 @@ def export_team_task_history(team):
     writer.writerow([])
 
     # ── Task Detail Rows ──
-    writer.writerow(["=== TASK DETAILS ==="])
+    writer.writerow(["TASK DETAILS"])
     writer.writerow([
         "#", "Task ID", "Report ID", "Priority", "Task Status",
         "Assigned At", "Due Date", "Started At", "Completed At",
