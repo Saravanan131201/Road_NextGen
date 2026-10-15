@@ -1,0 +1,74 @@
+name: Road_NextGen CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip --quiet
+          pip install --quiet \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            -r requirements.txt
+
+      - name: Lint & syntax check
+        run: |
+          python -m compileall -q \
+            app.py config.py extensions.py wsgi.py \
+            setup_indexes.py models routes services utils
+          pip install flake8 --quiet
+          flake8 app.py config.py extensions.py wsgi.py \
+            models/ routes/ services/ utils/ \
+            --max-line-length=120 --ignore=E501,W503 --count || true
+
+      - name: Run tests
+        run: |
+          pip install pytest pytest-cov mongomock --quiet
+          pytest tests/ \
+            --junitxml=reports/test-results.xml \
+            --cov=. \
+            --cov-report=xml:reports/coverage.xml \
+            -v
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: reports/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test                    
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment:
+      name: production             
+
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          RESPONSE=$(curl --fail --silent --show-error \
+            -X GET "${{ secrets.RENDER_DEPLOY_HOOK_ROAD_NEXTGEN }}" \
+            -w "\nHTTP_STATUS:%{http_code}")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          echo "HTTP status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" != "200" ] && [ "$HTTP_STATUS" != "201" ]; then
+            echo "Render returned: $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Render deployment triggered successfully."
