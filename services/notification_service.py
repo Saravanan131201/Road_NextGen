@@ -1,4 +1,3 @@
-from flask import current_app
 from extensions import mongo, socketio
 from datetime import datetime
 from bson import ObjectId
