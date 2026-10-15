@@ -65,6 +65,23 @@ def _send_otp_email(to_email: str, otp: str):
             f"Mailer service error {response.status_code}: {response.text}"
         )
 
+def _send_welcome_email(to_email: str, name: str):
+    import requests as _req
+    try:
+        mailer_url = current_app.config["MAILER_SERVICE_URL"]
+        api_secret = current_app.config["MAILER_API_SECRET"]
+        _req.post(
+            f"{mailer_url}/send-welcome",
+            headers={"X-API-Secret": api_secret, "Content-Type": "application/json"},
+            json={"to_email": to_email, "name": name},
+            timeout=30
+        )
+
+        print("[Welcome Mail] sent successfully")
+        
+    except Exception as e:
+        print(f"[Welcome Mail] failed: {e}")
+
 
 # routes/auth.py  —  _upsert_citizen()
 
@@ -105,7 +122,7 @@ def _upsert_citizen(email: str, name: str = None, google_id: str = None,
     }
     if google_id:
         payload["google_id"] = google_id
-    result = mongo.db.users.insert_one(payload)
+    result = mongo.db.users.insert_one(payload) 
     return mongo.db.users.find_one({"_id": result.inserted_id})
 
 
@@ -216,8 +233,11 @@ def citizen_verify_otp():
     name = record.get("name", "")
     mongo.db.otp_tokens.delete_one({"email": email})
 
-    user = _upsert_citizen(email=email, name=name, auth_provider="otp")
+    is_new = not mongo.db.users.find_one({"email": email})
+    user   = _upsert_citizen(email=email, name=name, auth_provider="otp")
     _set_session(user, SESSION_OTP_DAYS)
+    if is_new:
+        _send_welcome_email(email, user.get("name", name))
     flash(f"Welcome, {user.get('name','').split()[0]}!", "success")
     return redirect(url_for("citizen.dashboard"))
 
@@ -282,7 +302,8 @@ def google_callback():
             flash("Only @gmail.com accounts are accepted for citizen login.", "danger")
             return redirect(url_for("auth.login", tab="citizen"))
 
-        user = _upsert_citizen(
+        is_new = not mongo.db.users.find_one({"email": email})
+        user   = _upsert_citizen(
             email=email, name=name,
             google_id=google_id, avatar=avatar,
             auth_provider="google"
@@ -293,6 +314,9 @@ def google_callback():
             return redirect(url_for("auth.login", tab="citizen"))
 
         _set_session(user, SESSION_OAUTH_DAYS)
+        if is_new:
+            _send_welcome_email(email, name)
+            
         flash(f"Welcome back, {name.split()[0]}!", "success")
         return redirect(url_for("citizen.dashboard"))
 
