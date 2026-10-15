@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session
 from flask_cors import CORS
 from config import Config
 import cloudinary
