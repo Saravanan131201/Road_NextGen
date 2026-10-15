@@ -14,6 +14,8 @@ from bson import ObjectId
 from app import socketio
 from datetime import datetime
 
+from extensions import mongo
+
 
 crew_bp = Blueprint("crew", __name__)
 
@@ -29,6 +31,30 @@ def _assert_team_head():
     if not user or not user.get("is_team_head"):
         return None, None
     return user, user.get("team", "")
+
+
+def _send_repair_complete_email(to_email: str, name: str, damage_label: str,
+                                 location_str: str, team_name: str):
+    """Fire-and-forget repair-complete email. Never raises."""
+    try:
+        import requests as _req
+        from flask import current_app
+        mailer_url = current_app.config["MAILER_SERVICE_URL"]
+        api_secret = current_app.config["MAILER_API_SECRET"]
+        _req.post(
+            f"{mailer_url}/send-repair-complete",
+            headers={"X-API-Secret": api_secret, "Content-Type": "application/json"},
+            json={
+                "to_email":     to_email,
+                "name":         name,
+                "damage_label": damage_label,
+                "location_str": location_str,
+                "team_name":    team_name,
+            },
+            timeout=30
+        )
+    except Exception as e:
+        print(f"[Completion Mail] failed: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -295,7 +321,7 @@ def export_team_history_csv():
     writer = csv.writer(output)
 
     # ── Summary block ──
-    writer.writerow(["=== TEAM TASK HISTORY REPORT ==="])
+    writer.writerow(["TEAM TASK HISTORY REPORT"])
     writer.writerow(["Generated At",    now.strftime("%Y-%m-%d %H:%M:%S UTC")])
     writer.writerow([])
     writer.writerow(["Team Name",       team_cfg.get("name", team_key)])
@@ -304,7 +330,7 @@ def export_team_history_csv():
     writer.writerow(["Phone",           user.get("phone", "")])
     writer.writerow(["Handles Severity", team_cfg.get("severity", "")])
     writer.writerow([])
-    writer.writerow(["=== PERFORMANCE SUMMARY ==="])
+    writer.writerow(["PERFORMANCE SUMMARY"])
     writer.writerow(["Total Tasks",            total])
     writer.writerow(["Completed On Time",       on_time])
     writer.writerow(["Completed Late",          late])
@@ -314,7 +340,7 @@ def export_team_history_csv():
     writer.writerow([])
 
     # ── Worker roster ──
-    writer.writerow(["=== TEAM WORKERS ==="])
+    writer.writerow(["TEAM WORKERS"])
     writer.writerow(["Name", "Phone", "Address", "Status"])
     workers_list = Worker.find_by_team(team_key)
     for w in workers_list:
@@ -327,7 +353,7 @@ def export_team_history_csv():
     writer.writerow([])
 
     # ── Task detail rows ──
-    writer.writerow(["=== TASK DETAILS ==="])
+    writer.writerow(["TASK DETAILS"])
     writer.writerow([
         "#", "Task ID", "Report ID", "Priority", "Task Status",
         "Assigned At", "Due Date", "Started At", "Completed At",
@@ -465,7 +491,7 @@ def export_worker_history_csv(worker_id):
     writer = csv.writer(output)
 
     # ── Worker summary ──
-    writer.writerow(["=== WORKER TASK HISTORY REPORT ==="])
+    writer.writerow(["WORKER TASK HISTORY REPORT"])
     writer.writerow(["Generated At", _fmt_dt(now)])
     writer.writerow([])
     writer.writerow(["Worker Name",  worker.get("name", "")])
@@ -475,7 +501,7 @@ def export_worker_history_csv(worker_id):
     writer.writerow(["Team",         team_cfg.get("name", team_key)])
     writer.writerow(["Team Head",    user.get("name", "")])
     writer.writerow([])
-    writer.writerow(["=== PERFORMANCE SUMMARY ==="])
+    writer.writerow(["PERFORMANCE SUMMARY"])
     writer.writerow(["Total Tasks Assigned",    total])
     writer.writerow(["Completed On Time",        on_time])
     writer.writerow(["Completed Late",           late])
@@ -485,7 +511,7 @@ def export_worker_history_csv(worker_id):
     writer.writerow([])
 
     # ── Task detail rows ──
-    writer.writerow(["=== TASK DETAILS ==="])
+    writer.writerow(["TASK DETAILS"])
     writer.writerow([
         "#", "Task ID", "Report ID", "Priority", "Task Status",
         "Assigned At", "Due Date", "Started At", "Completed At",
@@ -752,6 +778,17 @@ def update_task_status(task_id):
                 notif_type="info",
                 data={"report_id": task.get("report_id"), "task_id": task_id}
             )
+
+            #Also send citizen an email
+            citizen = mongo.db.users.find_one({"_id": ObjectId(reporter_id)})
+            if citizen and citizen.get("email"):
+                _send_repair_complete_email(
+                    to_email     = citizen["email"],
+                    name         = citizen.get("name", "Citizen"),
+                    damage_label = damage_type,   # already built above in same block
+                    location_str = location_str,  # already built above
+                    team_name    = team_cfg.get("name", "Repair Team"),
+                )
 
         # Notify all admins
         admins, _ = User.get_all(role="admin")

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, session, request
 from utils.decorators import login_required
 from models.report import Report
 from models.user import User
@@ -130,7 +130,7 @@ def export_citizen_report_csv(report_id):
     writer = csv.writer(output)
 
     # ── Report section ──
-    writer.writerow(["=== REPORT DETAILS ==="])
+    writer.writerow(["REPORT DETAILS"])
     writer.writerow(["Field", "Value"])
 
     loc        = r.get("location", {})
@@ -176,7 +176,7 @@ def export_citizen_report_csv(report_id):
 
     # ── Task section ──
     writer.writerow([])
-    writer.writerow(["=== TASK DETAILS ==="])
+    writer.writerow(["TASK DETAILS"])
 
     task = TaskModel.find_by_report_id(report_id)
     if not task:
@@ -199,7 +199,7 @@ def export_citizen_report_csv(report_id):
 
         # ── Team Head section ──
         writer.writerow([])
-        writer.writerow(["=== TEAM HEAD ==="])
+        writer.writerow(["TEAM HEAD"])
         if task.get("team_head_id"):
             th = mongo.db.users.find_one({"_id": ObjectId(task["team_head_id"])})
             if th:
@@ -214,7 +214,7 @@ def export_citizen_report_csv(report_id):
 
         # ── Workers section ──
         writer.writerow([])
-        writer.writerow(["=== ASSIGNED WORKERS ==="])
+        writer.writerow(["ASSIGNED WORKERS"])
         worker_ids = task.get("assigned_workers", [])
         if not worker_ids:
             writer.writerow(["No workers assigned."])
