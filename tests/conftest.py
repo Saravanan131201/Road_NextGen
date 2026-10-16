@@ -1,66 +1,62 @@
 import pytest
 import mongomock
-from unittest.mock import patch, MagicMock, PropertyMock
-from app import create_app
+from unittest.mock import patch, MagicMock
 
 
 def _make_mock_mongo():
-    """
-    Build a mock PyMongo object backed by a real mongomock in-memory client.
-    mongo.db returns the mongomock database, so create_index() calls work.
-    """
+    
     mock_client = mongomock.MongoClient()
     mock_db     = mock_client["test_road_nextgen"]
 
     m = MagicMock()
-    m.db = mock_db           # <- real mongomock DB, not None
-    m.init_app = MagicMock() # <- silences the actual PyMongo init
+    m.db        = mock_db    
+    m.init_app  = MagicMock() 
     return m
 
 
 @pytest.fixture(scope="session")
 def app():
     """
-    Create a Flask test app wired to mongomock (in-memory MongoDB).
-    No real DB or external service is needed.
+    Flask test app wired to mongomock in-memory database.
+    Patches are applied to the names as app.py sees them at runtime.
     """
-    mock_mongo  = _make_mock_mongo()
-    mock_sio    = MagicMock()
-    mock_oauth  = MagicMock()
+    mock_mongo = _make_mock_mongo()
+    mock_sio   = MagicMock()
+    mock_oauth = MagicMock()
 
-    with patch("extensions.mongo",    mock_mongo), \
-         patch("extensions.socketio", mock_sio), \
-         patch("extensions.oauth",    mock_oauth), \
-         patch("flask_pymongo.PyMongo.init_app", MagicMock()), \
-         patch("cloudinary.config",   MagicMock()):
+    with \
+        patch("app.mongo",    mock_mongo), \
+        patch("app.socketio", mock_sio),   \
+        patch("app.oauth",    mock_oauth), \
+        patch("app.cloudinary.config", MagicMock()):
 
+        # Import create_app INSIDE the patch context so all references
+        # to mongo/socketio/oauth inside create_app() use our mocks.
+        from app import create_app
         flask_app = create_app()
 
         flask_app.config.update({
-            "TESTING":              True,
-            "SECRET_KEY":           "ci-test-secret-key",
-            "MONGO_URI":            "mongodb://localhost:27017/test_road_nextgen",
-            "CLOUDINARY_CLOUD_NAME":"dummy",
-            "CLOUDINARY_API_KEY":   "dummy",
-            "CLOUDINARY_API_SECRET":"dummy",
-            "GOOGLE_CLIENT_ID":     "dummy",
-            "GOOGLE_CLIENT_SECRET": "dummy",
-            "MAILER_SERVICE_URL":   "http://dummy-mailer",
-            "MAILER_API_SECRET":    "dummy",
-            "YOLO_MODEL_PATH":      None,
-            "SESSION_COOKIE_SECURE":False,
-            "WTF_CSRF_ENABLED":     False,
+            "TESTING":               True,
+            "SECRET_KEY":            "ci-test-secret-key",
+            "MONGO_URI":             "mongodb://localhost:27017/test_road_nextgen",
+            "CLOUDINARY_CLOUD_NAME": "dummy",
+            "CLOUDINARY_API_KEY":    "dummy",
+            "CLOUDINARY_API_SECRET": "dummy",
+            "GOOGLE_CLIENT_ID":      "dummy",
+            "GOOGLE_CLIENT_SECRET":  "dummy",
+            "MAILER_SERVICE_URL":    "http://dummy-mailer",
+            "MAILER_API_SECRET":     "dummy",
+            "YOLO_MODEL_PATH":       None,
+            "SESSION_COOKIE_SECURE": False,
+            "WTF_CSRF_ENABLED":      False,
         })
-
-        flask_app.mongo  = mock_mongo   
-        flask_app.db     = mock_mongo.db
 
         yield flask_app
 
 
 @pytest.fixture
 def client(app):
-    """Flask test client for making HTTP requests."""
+    """Flask test client."""
     return app.test_client()
 
 
