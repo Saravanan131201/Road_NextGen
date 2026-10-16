@@ -3,8 +3,8 @@ from utils.decorators import crew_required
 from models.task import Task
 from models.report import Report
 from models.user import User
-from models.team import Worker, TEAMS, WORKER_STATUS, TeamHead
-from services.cloudinary_service import upload_image, delete_image, upload_worker_photo, upload_repair_photo
+from models.team import Worker, TEAMS, WORKER_STATUS
+from services.cloudinary_service import delete_image, upload_worker_photo, upload_repair_photo
 from services.notification_service import get_user_notifications, create_notification, upsert_notification
 
 from services.ai_service import DAMAGE_DISPLAY
@@ -683,7 +683,6 @@ def assign_workers(task_id):
 
     # ── Notify citizen ────────────────────────────────────────────────────────
     reporter_id = report.get("reporter_id") if report else None
-    reporter_id = report.get("reporter_id") if report else None
     if reporter_id:
         upsert_notification(
             user_id=reporter_id,
@@ -779,16 +778,6 @@ def update_task_status(task_id):
                 data={"report_id": task.get("report_id"), "task_id": task_id}
             )
 
-            #Also send citizen an email
-            citizen = mongo.db.users.find_one({"_id": ObjectId(reporter_id)})
-            if citizen and citizen.get("email"):
-                _send_repair_complete_email(
-                    to_email     = citizen["email"],
-                    name         = citizen.get("name", "Citizen"),
-                    damage_label = damage_type,   # already built above in same block
-                    location_str = location_str,  # already built above
-                    team_name    = team_cfg.get("name", "Repair Team"),
-                )
 
         # Notify all admins
         admins, _ = User.get_all(role="admin")
@@ -850,6 +839,17 @@ def update_task_status(task_id):
                 notif_type="success",
                 data={"report_id": task.get("report_id"), "task_id": task_id}
             )
+
+            #Also send citizen an email
+            citizen = mongo.db.users.find_one({"_id": ObjectId(reporter_id)})
+            if citizen and citizen.get("email"):
+                _send_repair_complete_email(
+                    to_email     = citizen["email"],
+                    name         = citizen.get("name", "Citizen"),
+                    damage_label = damage_type,   
+                    location_str = location_str,  
+                    team_name    = team_cfg.get("name", "Repair Team"),
+                )
 
         # ── Notify all admins ─────────────────────────────────────────────────
         admins, _ = User.get_all(role="admin")
