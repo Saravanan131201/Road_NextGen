@@ -27,11 +27,8 @@ def app():
     with \
         patch("app.mongo",    mock_mongo), \
         patch("app.socketio", mock_sio),   \
-        patch("app.oauth",    mock_oauth), \
-        patch("app.cloudinary.config", MagicMock()):
+        patch("app.oauth",    mock_oauth):
 
-        # Import create_app INSIDE the patch context so all references
-        # to mongo/socketio/oauth inside create_app() use our mocks.
         from app import create_app
         flask_app = create_app()
 
